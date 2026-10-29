@@ -25,7 +25,7 @@ Build Dayli Step Tracker, a bilingual iOS and Android step-tracking app for peop
 ## Todos
 
 1. Completed: create a GitHub organization at `https://github.com/DayliTracker` and a public repository named `dayli-step-tracker` under it.
-2. Scaffold the Expo React Native TypeScript frontend in the repository, organizing app code under `/frontend` and documenting that backend services are out of scope for this MVP.
+2. Completed: scaffold the Expo React Native TypeScript frontend in the repository root and document that backend services are out of scope for this MVP.
 3. Implement navigation, Today and Progress screens, Settings access, design tokens, and original pixel-art character presentation.
 4. Implement local persistence, bilingual strings, goal history, manual daily totals/overrides, source labeling, and clear-data behavior.
 5. Integrate read-only HealthKit and Health Connect step access, permission/setup guidance, refresh behavior, and truthful no-data states.
