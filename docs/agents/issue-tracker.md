@@ -27,6 +27,43 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Ticket format
+
+```markdown
+## Problem
+<1–3 sentences: what is wrong or missing, from the user's side. No implementation plan.>
+
+## Context
+- **Where:** <page>, `<route>`
+  - a. <step>
+  - b. <step>
+- **Who:** <who sees it>
+
+![<page> · desktop](https://github.com/<owner>/<repo>/raw/<sha>/<path>.png)
+
+## Fix
+<the intended change in 1–3 lines>
+
+## Acceptance Criteria
+- [ ] <checkable outcome a test can assert>
+- [ ] <checkable outcome>
+
+## Risk
+🟢 **Low** · <one line>
+
+## Blocked by
+- #<N> — <why>          ← or exactly: - None.
+```
+
+- Title: `<emoji> [<kind>] <scope>: <what>`, at most 70 characters, no ticket number.
+- Context uses lettered steps under Where, one per line. Embed UI screenshots at a commit-pinned raw URL; do not link to them.
+- Bugs add the `## Evidence` table from the super-board writing standard. Mark missing evidence `n/a — why`.
+- Include 2–5 checkable Acceptance Criteria; avoid subjective wording.
+- Risk is 🟢 Low, 🟡 Medium, or 🔴 High, followed by one line.
+- Blocked by is a list of `- #N — why` entries or a single `- None.`.
+- `money`, `auth`, and `schema` labels route PR merges to a human. `schema` is for destructive changes only.
+- Keep each card to one PR under 400 changed lines; split larger work.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
