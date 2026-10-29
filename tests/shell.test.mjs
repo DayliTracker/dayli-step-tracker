@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { getCopy } from '../src/localization.ts';
 import { createNavigationState, navigate } from '../src/navigation.ts';
+
+const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 test('tabs, Settings origins, and Settings destinations navigate correctly', () => {
   const initial = createNavigationState();
@@ -25,4 +28,30 @@ test('shell labels are translated and complete in both supported locales', () =>
   assert.equal(Object.keys(getCopy('en')).length, Object.keys(getCopy('vi')).length);
   assert.ok(Object.values(getCopy('en')).every((value) => value.trim()));
   assert.ok(Object.values(getCopy('vi')).every((value) => value.trim()));
+});
+
+test('Settings lists all destinations and clear-data actions are preview-only', () => {
+  for (const destination of ['goal', 'language', 'health']) {
+    assert.ok(appSource.includes(`destination: '${destination}'`));
+  }
+  assert.match(appSource, /title: copy\.clearTitle, subtitle: copy\.clearSubtitle, clear: true/);
+  assert.match(appSource, /Alert\.alert\(copy\.clearConfirmTitle, copy\.clearConfirmMessage/);
+  assert.match(appSource, /\{ text: copy\.cancel, style: 'cancel' \}, \{ text: copy\.gotIt \}/);
+  assert.match(getCopy('en').clearConfirmMessage, /no app data will be cleared/i);
+  assert.match(getCopy('vi').clearConfirmMessage, /không bị xóa/i);
+});
+
+test('interactive controls have accessible names and at least 48-point touch targets', () => {
+  const pressables = Array.from(appSource.matchAll(/<Pressable\b([\s\S]*?)>/g), (match) => match[1]);
+  assert.equal(pressables.length, 4);
+  for (const pressable of pressables) {
+    assert.match(pressable, /accessibilityRole=/);
+    assert.match(pressable, /accessibilityLabel=/);
+  }
+
+  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'tab']) {
+    const style = appSource.match(new RegExp(`${styleName}:\\s*\\{[^}]*minHeight:\\s*(\\d+)`));
+    assert.ok(style, `${styleName} must declare a touch target`);
+    assert.ok(Number(style[1]) >= 48, `${styleName} must be at least 48 points high`);
+  }
 });
