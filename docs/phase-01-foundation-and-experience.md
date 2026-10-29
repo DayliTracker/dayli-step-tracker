@@ -7,6 +7,9 @@ coherent app shell for the Today, Progress, and Settings experiences. This
 phase focuses on navigation and presentation; local data rules and health
 integration are implemented in later phases.
 
+The screen-flow and visual-system handoff is documented in
+[`phase-01-ux-design.md`](./phase-01-ux-design.md).
+
 ## Dependencies
 
 - The project scaffold described as complete in Todo 2 of [`../plan.md`](../plan.md).
