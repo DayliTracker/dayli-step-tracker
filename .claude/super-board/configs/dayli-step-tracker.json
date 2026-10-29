@@ -19,7 +19,7 @@
     "path": ".",
     "remote": "https://github.com/DayliTracker/dayli-step-tracker"
   },
-  "base_branch": "staging",
+  "base_branch": "main",
   "timezone": "Asia/Ho_Chi_Minh",
   "columns": [
     "Backlog",
