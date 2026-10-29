@@ -90,10 +90,10 @@ integration are implemented in later phases.
 
 ## Deploy
 
-1. Run the repository's existing checks and produce an installable development
-   build using the project's supported Expo workflow.
-2. Install that build on representative iOS and Android targets and verify
-   navigation, layout, and asset loading on-device.
+1. Run the repository's existing checks and produce an installable iOS
+   Simulator development build using the project's supported Expo workflow.
+2. Verify navigation, layout, and asset loading in the iOS Simulator after
+   the Phase 1 implementation tickets land.
 3. Record build configuration or installation blockers for resolution; do not
    claim native health verification in this phase.
 4. Do not publish a store release or create cloud infrastructure as part of
@@ -106,7 +106,7 @@ integration are implemented in later phases.
 - The screen shell implements the approved hierarchy and original visual
   direction without introducing excluded product features.
 - Navigation, responsive layout, accessibility, and bilingual layout checks
-  pass with recorded evidence.
+  pass with recorded iOS Simulator evidence.
 - The source plan's exact display and progress-ring rules are preserved.
 
 ## Risks and verification notes
@@ -116,4 +116,4 @@ integration are implemented in later phases.
 - Phase 1 must not make fake values look like real Health or manual totals.
 - Health permission prompts, live refresh, and platform health data are outside
   this phase and must be verified in Phase 3.
-
+- Simulator checks in this phase do not establish live HealthKit coverage.

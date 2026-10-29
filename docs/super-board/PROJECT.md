@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Dayli Step Tracker is a bilingual iOS and Android walking companion built with Expo, React Native, and TypeScript. The MVP reads daily steps from Apple HealthKit and Android Health Connect, supports manual totals, and keeps app data on the device.
+Dayli Step Tracker is a bilingual iPhone walking companion built with Expo, React Native, and TypeScript. The current MVP supports iOS only, reads daily steps from Apple HealthKit, supports manual totals, and keeps app data on the device. Android and Health Connect are deferred without a commitment or timeline.
 
 ## Product boundaries
 
@@ -20,11 +20,11 @@ Dayli Step Tracker is a bilingual iOS and Android walking companion built with E
 
 - Frontend: Expo, React Native, and TypeScript at the repository root.
 - The MVP has no backend, database, authentication service, cloud sync, analytics, or server API.
-- HealthKit and Health Connect need native development builds; Expo Go cannot verify those integrations.
+- HealthKit needs a native iOS development build; Expo Go cannot verify the integration. Live HealthKit acceptance and release readiness require physical-iPhone evidence.
 - Keep health totals read-only and local. Do not add a remote data path or store fetched totals.
 - Follow `plan.md` for the agreed user flows and exclusions.
 
 ## Verification
 
 - Run `npm run typecheck` for the current TypeScript check.
-- Native health integrations require platform development builds and cannot be verified in Expo Go.
+- Native HealthKit integration requires an iOS development build and cannot be verified in Expo Go. Simulator and mocked checks do not prove live HealthKit behavior.

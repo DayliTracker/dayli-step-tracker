@@ -17,20 +17,20 @@ authorization to publish the app.
 ## Plan
 
 1. Build an acceptance matrix from [`../plan.md`](../plan.md) and the phase exit
-   criteria. Map each requirement to a test, platform, result, and evidence.
+   criteria. Map each requirement to a test, iOS target, result, and evidence.
 2. Identify supported OS/device configurations from project configuration
    rather than assuming a support range.
 3. Run a clean installation and upgrade/relaunch workflow, including
    permission, local-data persistence, and clear-data checks.
-4. Review the complete user journey in English and Vietnamese on both
-   platforms, including offline use and unavailable health services.
+4. Review the complete user journey in English and Vietnamese on iPhone,
+   including offline use and unavailable HealthKit data.
 5. Prepare contributor and release-readiness documentation covering native
    builds, permissions, local-data limits, and verification.
 
 ## Design
 
 1. Define a verification matrix with these dimensions:
-   - iOS and Android.
+   - iPhone and iOS Simulator.
    - English and Vietnamese.
    - Permission granted, skipped/declined, unavailable, and no data.
    - Health totals and manual-total override.
@@ -53,8 +53,7 @@ authorization to publish the app.
    - Today totals, goal display, source label, and progress ring.
    - Seven local dates, historical goals, and manual entry lifecycle.
    - Language selection and Settings access from both primary tabs.
-   - Health explanation, permission outcomes, refresh, no-data, and platform
-     unavailability.
+   - Health explanation, permission outcomes, refresh, and no-data.
    - Clear-data confirmation, exact reset behavior, and permission retention.
 3. Fix only issues needed to meet the source plan and phase exit criteria;
    record any scope change for explicit product review.
@@ -71,8 +70,10 @@ authorization to publish the app.
 
 1. Run the repository's targeted checks and full required test suite; record
    command, environment, result, and any known limitation.
-2. Execute the acceptance matrix on native iOS and Android builds, not Expo Go,
-   for all health-related requirements.
+2. Execute Phase 1 accessibility/layout checks in an iOS Simulator development
+   build. Execute all live HealthKit acceptance checks in a native build on a
+   physical iPhone; Expo Go, simulator, and mocked results are insufficient for
+   live HealthKit acceptance.
 3. Verify critical invariants across phase boundaries:
    - A goal change never rewrites past goals.
    - Manual totals replace and survive refresh over Health totals.
@@ -90,11 +91,12 @@ authorization to publish the app.
 
 ## Deploy
 
-1. Produce release-candidate builds only after all blocking acceptance gates
-   pass. Verify the signed artifact installs and opens on each target platform.
-2. Complete the applicable App Store and Google Play metadata, privacy,
-   permission, and submission checklists as readiness work; confirm all health
-   disclosures match actual behavior.
+1. Produce release-candidate builds only after all blocking iOS acceptance
+   gates pass, including physical-iPhone HealthKit verification. Verify the
+   signed artifact installs and opens on the supported iPhone target.
+2. Complete applicable App Store metadata, privacy, permission, and submission
+   checklists as readiness work; confirm all health disclosures match actual
+   behavior.
 3. Record the artifact version, build configuration, test evidence, known
    limitations, and rollback/contact procedure for a future release operator.
 4. Stop before store submission, rollout, or publication. Those actions
@@ -106,7 +108,9 @@ authorization to publish the app.
 
 - Every in-scope source-plan requirement maps to a passing check or a clearly
   recorded, explicitly accepted limitation.
-- Cross-phase invariants pass on supported iOS and Android native builds.
+- Cross-phase invariants pass on the supported iPhone/iOS target.
+- Physical-iPhone HealthKit evidence is recorded before release readiness is
+  considered complete.
 - Localization, accessibility, privacy, and local-data disclosures are
   reviewed.
 - Development/build/test instructions are verified and reproducible.
@@ -115,10 +119,9 @@ authorization to publish the app.
 
 ## Risks and verification notes
 
-- Automated tests alone cannot establish that native permissions and Health
-  data access work on each platform. Require native-build evidence.
+- Automated tests alone cannot establish that native HealthKit permissions and
+  data access work on iPhone. Require physical-iPhone evidence.
 - Avoid claiming success from a build-only check when the acceptance criteria
   require interaction or data verification.
 - Any unresolved platform, privacy, or release-policy question is a blocker to
   release readiness; document it instead of guessing.
-

@@ -46,9 +46,9 @@ read-only and is not persisted as a fetched total.
 7. Define clear-data precisely: remove local preferences, goal history, manual
    entries, and cached summaries; restore the default goal and device-derived
    language; do not revoke operating-system Health permissions.
-8. Keep "no Health data found", skipped or declined access, and unavailable
-   Health Connect as distinct states. A zero or absent total must not be used to
-   infer a permission decision.
+8. Keep "no Health data found" and skipped or declined access as distinct
+   states. A zero or absent total must not be used to infer a permission
+   decision.
 
 ## Implement
 
@@ -84,8 +84,8 @@ read-only and is not persisted as a fetched total.
    Health refreshes until removed. Verify removal reveals the available Health
    total or the correct neutral no-data state.
 5. Test dates at local midnight and around timezone and daylight-saving
-   transitions on supported platforms. Confirm the seven-date window follows
-   device-local dates rather than UTC date labels.
+   transitions on supported iOS versions. Confirm the seven-date window
+   follows device-local dates rather than UTC date labels.
 6. Test initial locale selection for Vietnamese and non-Vietnamese device
    locales, persisted language overrides, and app restart behavior.
 7. Test clear-data confirmation, cancellation, successful reset, and next
@@ -100,8 +100,8 @@ read-only and is not persisted as a fetched total.
 
 ## Deploy
 
-1. Run the repository's checks and install a development build on iOS and
-   Android to validate local persistence and locale behavior on-device.
+1. Run the repository's checks and install an iOS development build to validate
+   local persistence and locale behavior on-device.
 2. Confirm that no backend, cloud-sync service, analytics service, or new
    permission is required for these local features.
 3. Record any data-format or migration requirement discovered during
@@ -127,4 +127,3 @@ read-only and is not persisted as a fetched total.
   the storage boundary and test across app restarts.
 - Clearing app-owned data and revoking a system permission are separate
   operations. The clear-data action must not silently perform the latter.
-
