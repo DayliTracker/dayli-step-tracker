@@ -251,7 +251,7 @@ const s = StyleSheet.create({
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowTitle: { color: '#5B4634', fontSize: 16, fontWeight: '700', flexShrink: 1 },
   rowValue: { color: '#5B4634', fontSize: 14, fontWeight: '700' },
-  list: { gap: 10, marginTop: 14 },
+  list: { gap: 10, marginTop: 14, alignSelf: 'stretch' },
   settingsRow: {
     minHeight: 70, flexDirection: 'row', alignItems: 'center', padding: 14,
     borderRadius: 17, backgroundColor: '#FFFDF8', borderWidth: 1, borderColor: '#E8DDCB',
