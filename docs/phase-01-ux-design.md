@@ -26,107 +26,19 @@ Today and Progress are the only primary tabs. Settings is a destination reached
 from either tab, not a third tab. Preserve the originating tab when returning
 from Settings.
 
-### Navigation flow
-
+### Navigation flow and wireframes
 ```mermaid
-flowchart TD
-  subgraph Tabs["Primary tabs"]
-    Today[Today]
-    Progress[Progress]
-  end
-  Today <-->|Switch tab| Progress
-  Today -->|Settings gear| Settings
-  Progress -->|Settings gear| Settings
-  Settings -->|Back · return to Today| Today
-  Settings -->|Back · return to Progress| Progress
+flowchart LR
+Today <-->|tab| Progress
+Today -->|gear| Settings
+Progress -->|gear| Settings
+Settings -->|Back to origin| Today
+Settings -->|Back to origin| Progress
 ```
-
-### Low-fidelity wireframes
-
-These layouts show hierarchy and destinations, not final styling or interactive
-behavior. Settings is opened from either tab's header and its Back action
-returns to the originating tab.
-
-**Today**
-
 ```text
-+--------------------------------------+
-| Today · Thu, Oct 29              [⚙] |
-|                                      |
-|             .--------.               |
-|            / 6,420    \              |
-|           |   steps    |             |
-|            \__________/              |
-|       6,420 / 8,000 · 0.80× goal     |
-|                                      |
-| Source: Health                       |
-|                                      |
-|       [ original character art ]     |
-|                                      |
-|      Today  ●             Progress   |
-+--------------------------------------+
-```
-
-**Progress**
-
-```text
-+--------------------------------------+
-| Progress · last 7 local days     [⚙] |
-|                                      |
-| Today · Oct 29                       |
-| 6,420 steps · Goal 8,000 · Health    |
-| [Add / edit manual total · Oct 29]   |
-|--------------------------------------|
-| Wed · Oct 28                         |
-| 7,100 steps · Goal 8,000 · Manual    |
-| [Add / edit manual total · Oct 28]   |
-|--------------------------------------|
-| Tue · Oct 27                         |
-| 3,200 steps · Goal 8,000 · Health    |
-| [Add / edit manual total · Oct 27]   |
-|--------------------------------------|
-| Mon · Oct 26                         |
-| 5,400 steps · Goal 8,000 · Health    |
-| [Add / edit manual total · Oct 26]   |
-|--------------------------------------|
-| Sun · Oct 25                         |
-| 0 steps · Goal 8,000 · Health        |
-| [Add / edit manual total · Oct 25]   |
-|--------------------------------------|
-| Sat · Oct 24                         |
-| 8,200 steps · Goal 8,000 · Health    |
-| [Add / edit manual total · Oct 24]   |
-|--------------------------------------|
-| Fri · Oct 23                         |
-| 2,100 steps · Goal 8,000 · Health    |
-| [Add / edit manual total · Oct 23]   |
-|                                      |
-|      Today               Progress ●  |
-+--------------------------------------+
-```
-
-Each date's manual total replaces that date's Health total; it is not added to
-it. The per-date action adds a total when none exists and edits it when one is
-already present.
-
-**Settings**
-
-```text
-+--------------------------------------+
-| [Back to Today or Progress]          |
-| Settings                             |
-|                                      |
-| Daily step goal                   >  |
-| Language                          >  |
-| Health access                     >  |
-|                                      |
-| Clear app data                    >  |
-|   Confirm before clearing             |
-|                                      |
-| Data stays on this device.            |
-| It may be lost if the app is          |
-| uninstalled or the device is replaced.|
-+--------------------------------------+
+Today: [date + gear] ↓ [ring + steps] ↓ [goal + ratio] ↓ [source + art] ↓ [Today | Progress]
+Progress: [gear] ↓ [7 local dates, newest first: date | steps | goal | source | add/edit manual for that date] ↓ [tabs]
+Settings: [Back to origin] ↓ [goal] ↓ [language] ↓ [Health access] ↓ [clear + confirm] ↓ [local-data disclosure]
 ```
 
 ## Screen layouts
