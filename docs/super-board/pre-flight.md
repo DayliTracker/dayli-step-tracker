@@ -19,16 +19,21 @@ Scanned the active Ready cards (#2 and #6) and
 - [✓] iOS Simulator device/runtime available for native development-build
   verification. The iPhone 17 simulator on iOS 27.0 boots and responds to
   simulator commands.
-- [✓] Android SDK platform tools (`adb`) are available (`adb` 37.0.1).
+- [✓] Android tooling is not required for the current iOS-only MVP; Android is
+  deferred without a commitment or timeline.
 
 ## Environment
 
 - [✓] No environment variables or database connections are required by the
   current project scope.
-- [ ] Representative iOS and Android development-build verification has not
-  been completed. An Android emulator is not configured; do not claim native
-  device coverage without completing and recording that verification.
+- [✓] The iOS Simulator is sufficient for Phase 1 layout/accessibility QA and
+  design/app-shell work; the app's Simulator development-build checks are
+  tracked by issue #6 after its dependencies complete.
+- [✓] Run-level pre-flight does not claim that the app has been verified on a
+  device. Physical-iPhone HealthKit verification has not been completed; live
+  HealthKit acceptance and release readiness remain gated on that evidence in
+  Phases 3 and 4, but it does not block unrelated UI/app-shell work.
 
-The native verification requirements apply to Ready issue #6. It is also
+Issue #6 covers iOS Simulator accessibility and layout verification. It is
 blocked by issues #3, #4, and #5, so it must not be treated as ready to verify
 until those dependencies are complete.
