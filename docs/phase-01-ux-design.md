@@ -66,8 +66,8 @@ actual data and transitions.
 | State | Presentation rule | Owner |
 | --- | --- | --- |
 | Loading | Use a clear loading treatment; never show a fabricated zero as a loaded total. | Phase 1 shell; data owners provide the trigger. |
-| No total available | Use neutral wording. Do not imply that missing steps prove access was denied. | Phase 3 for Health data; Phase 2 for local totals. |
-| Unavailable | Distinguish an unavailable source from an empty total. Keep manual tracking reachable. | Phase 3 for Health; Phase 2 for manual data. |
+| No Health steps found | Use neutral wording, guide the user to review Health access in Settings, and keep manual entry available. Do not imply access was denied. | Phase 3 for Health data; Phase 2 for manual totals. |
+| Health source unavailable | Distinguish an unavailable Health source from a Health source with no steps. Keep manual tracking reachable. | Phase 3 for Health; Phase 2 for manual data. |
 | Error | Show an explicit error treatment rather than a success-shaped value. Retry or recovery behavior belongs to the owning phase. | Phase 2 for local persistence; Phase 3 for Health refresh. |
 | Goal reached | Keep the ring full, show the exact total and uncapped ratio, and show the character's goal-reached presentation. | Phase 1 presentation; Phase 2 data. |
 
