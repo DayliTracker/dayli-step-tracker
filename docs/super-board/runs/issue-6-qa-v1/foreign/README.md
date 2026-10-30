@@ -1,0 +1,1 @@
+Quarantined captures of the zombie worker of stopped run dwfrun-8cdf7500 (ran issue #6 in parallel 22:36–22:56 +07 2026-10-30 before the orchestrator killed it). Not used as evidence for any verdict; touch-targets.json is the zombie's derivative analysis, superseded by bug #24 and tests/a11y-dumps.test.mjs.
