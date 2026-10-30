@@ -6,9 +6,17 @@ import {
   type PrimaryTab, type SettingsDestination,
 } from './src/navigation';
 import { getCopy, type Locale } from './src/localization';
+import {
+  DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
+  progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
+} from './src/today';
+import { DUCK_CHEER, DUCK_IDLE, DUCK_PALETTE, DUCK_SIZE } from './src/duck';
 
-const GOAL = 8000;
-const number = (locale: Locale) => GOAL.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US');
+const RING_SIZE = 190;
+const RING_RADIUS = 86;
+const RING_SEGMENT_WIDTH = 5;
+const RING_SEGMENT_HEIGHT = 11;
+const DUCK_SCALE = 8;
 const isPrimary = (screen: NavigationState['screen']) => screen === 'today' || screen === 'progress';
 
 export default function App() {
@@ -74,25 +82,90 @@ function PrimaryPage({ screen, locale, onNavigate }: {
 
 function Today({ date, locale }: { date: string; locale: Locale }) {
   const copy = getCopy(locale);
-  const goal = `${number(locale)} ${copy.steps}`;
+  // Phase 1 shell: no data owner exists yet, so the truthful snapshot is
+  // "unavailable". Phases 2-3 pass loading/empty/error/loaded snapshots
+  // through the same shape; every state below renders without fabricated data.
+  const [snapshot] = useState<TodaySnapshot>({ kind: 'unavailable' });
+  const loaded = snapshot.kind === 'loaded' ? snapshot : null;
+  const reached = goalReached(snapshot, DEFAULT_GOAL);
+  const summary = loaded
+    ? `${formatRatio(progressRatio(loaded.steps, DEFAULT_GOAL), locale)} ${copy.ratioOfGoal}`
+    : snapshot.kind === 'loading' ? copy.todayLoading
+    : snapshot.kind === 'empty' ? copy.todayEmpty
+    : snapshot.kind === 'error' ? copy.todayError
+    : copy.stepsUnavailable;
   return (
     <View>
       <Text style={s.date}>{date}</Text>
       <View style={s.card}>
         <View
           accessible
-          accessibilityLabel={`${copy.stepsUnavailable} ${copy.goal}: ${goal}. ${copy.progressUnavailable}`}
+          accessibilityLabel={todayA11yLabel(snapshot, DEFAULT_GOAL, locale, copy)}
           style={s.ring}
         >
-          <Text style={s.count} accessibilityElementsHidden>—</Text>
-          <Text style={s.steps} accessibilityElementsHidden>{copy.steps}</Text>
+          <Ring lit={loaded ? litSegments(loaded.steps, DEFAULT_GOAL) : 0} />
+          <View style={s.ringCenter} accessible={false} importantForAccessibility="no-hide-descendants">
+            <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
+              {loaded ? formatNumber(loaded.steps, locale) : '—'}
+            </Text>
+            <Text style={s.steps}>{copy.steps}</Text>
+          </View>
         </View>
-        <Text style={s.summary}>{copy.stepsUnavailable}</Text>
+        <Text style={s.summary}>{summary}</Text>
         <View style={s.divider} />
         <Text style={s.muted}>{copy.goal}</Text>
-        <Text style={s.goal}>{goal}</Text>
-        <Text style={s.muted}>{copy.sourceUnavailable}</Text>
+        <Text style={s.goal}>{formatNumber(DEFAULT_GOAL, locale)} {copy.steps}</Text>
+        <Text style={s.muted}>
+          {loaded
+            ? `${copy.sourceLabel}: ${loaded.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
+            : copy.sourceUnavailable}
+        </Text>
+        <DuckArt cheer={reached} />
+        {reached && <Text style={s.cheer}>{copy.goalReached}</Text>}
       </View>
+    </View>
+  );
+}
+
+/**
+ * Progress ring built from rounded segments filling clockwise from 12
+ * o'clock. The fill is the visual cue only — it never shows full before the
+ * goal and caps there; the exact count and uncapped ratio stay in text.
+ */
+function Ring({ lit }: { lit: number }) {
+  return (
+    <View style={s.ringTrack} accessible={false} importantForAccessibility="no-hide-descendants">
+      {Array.from({ length: RING_SEGMENTS }, (_, index) => (
+        <View
+          key={index}
+          style={[
+            s.ringSegment, index < lit && s.ringSegmentLit,
+            { transform: [{ rotate: `${segmentAngle(index)}deg` }, { translateY: -RING_RADIUS }] },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Original Dayli duck: runtime pixel grid, frame-swapped on goal reach. */
+function DuckArt({ cheer }: { cheer: boolean }) {
+  const rows = cheer ? DUCK_CHEER : DUCK_IDLE;
+  return (
+    <View
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      style={[s.duck, { width: DUCK_SIZE * DUCK_SCALE, height: DUCK_SIZE * DUCK_SCALE }]}
+    >
+      {rows.flatMap((row, y) => row.split('').map((pixel, x) => pixel === '.' ? null : (
+        <View
+          key={`${x}:${y}`}
+          style={{
+            position: 'absolute', width: DUCK_SCALE, height: DUCK_SCALE,
+            left: x * DUCK_SCALE, top: y * DUCK_SCALE, backgroundColor: DUCK_PALETTE[pixel],
+          }}
+        />
+      )))}
     </View>
   );
 }
@@ -111,7 +184,7 @@ function Progress({ locale }: { locale: Locale }) {
         const label = index ? date.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
           weekday: 'short', month: 'short', day: 'numeric',
         }) : copy.dateToday;
-        const goal = `${number(locale)} ${copy.steps}`;
+        const goal = `${formatNumber(DEFAULT_GOAL, locale)} ${copy.steps}`;
         return (
           <View key={date.toISOString()} accessible
             accessibilityLabel={`${label}. ${copy.detailsUnavailable} ${copy.goal}: ${goal}. ${copy.sourceUnavailable}`}
@@ -179,7 +252,7 @@ function DestinationPage({ destination, locale, onNavigate, onLocale }: {
         onPress={() => onNavigate({ type: 'back' })} />
       <View style={s.card}>
         <Text style={s.summary}>{detail}</Text>
-        {destination === 'goal' && <Text style={s.goal}>{number(locale)} {copy.steps}</Text>}
+        {destination === 'goal' && <Text style={s.goal}>{formatNumber(DEFAULT_GOAL, locale)} {copy.steps}</Text>}
         {destination === 'language' && (
           <View style={s.list}>
             {(['en', 'vi'] as const).map((value) => {
@@ -235,9 +308,18 @@ const s = StyleSheet.create({
   date: { color: '#806A55', fontSize: 16, marginBottom: 12 },
   card: { alignItems: 'center', padding: 20, borderRadius: 24, backgroundColor: '#FFFDF8',
     borderWidth: 1, borderColor: '#E8DDCB' },
-  ring: { width: 176, height: 176, borderRadius: 88, borderWidth: 13, borderColor: '#D8CCB9',
-    alignItems: 'center', justifyContent: 'center' },
-  count: { color: '#5B4634', fontSize: 46, fontWeight: '800' },
+  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
+  ringTrack: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  ringSegment: {
+    position: 'absolute', width: RING_SEGMENT_WIDTH, height: RING_SEGMENT_HEIGHT,
+    borderRadius: RING_SEGMENT_WIDTH / 2, backgroundColor: '#E8DDCB',
+    left: (RING_SIZE - RING_SEGMENT_WIDTH) / 2, top: (RING_SIZE - RING_SEGMENT_HEIGHT) / 2,
+  },
+  ringSegmentLit: { backgroundColor: '#5E9B7F' },
+  ringCenter: { alignItems: 'center', maxWidth: 2 * (RING_RADIUS - RING_SEGMENT_HEIGHT - 8) },
+  duck: { marginTop: 18, alignSelf: 'center' },
+  cheer: { color: '#326D52', fontSize: 15, fontWeight: '700', marginTop: 8, textAlign: 'center' },
+  count: { color: '#5B4634', fontSize: 40, fontWeight: '800' },
   steps: { color: '#806A55', fontSize: 15 },
   summary: { color: '#5B4634', fontSize: 16, lineHeight: 24, textAlign: 'center', marginTop: 18 },
   divider: { height: 1, alignSelf: 'stretch', backgroundColor: '#E8DDCB', marginVertical: 18 },
