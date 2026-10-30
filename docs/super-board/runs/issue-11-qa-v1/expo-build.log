@@ -1,0 +1,148 @@
+› Using --device 77EC52AC-8FB5-4CE2-B248-A27A071541EE
+Starting Metro Bundler
+
+iOS Bundled 565ms index.ts (623 modules)
+Writing bundle output to: /var/folders/rl/dqkc_c0j01567h1rttvfw7yh0000gn/T/5hzy99aao1b/main.jsbundle
+Done writing bundle output
+› Planning build
+› Executing react-native Pods/hermes-engine » [CP-User] [Hermes] Replace Hermes for the right configuration, if needed
+› Executing react-native Pods/ReactNativeDependencies » [CP-User] [RNDeps] Replace React Native Dependencies for the right configuration, if needed
+› Preparing Pods/React-timing-React-timing_privacy » ResourceBundle-React-timing_privacy-React-timing-Info.plist
+› Copying   React-timing/React-timing_privacy.bundle/PrivacyInfo.xcprivacy ➜ node_modules/react-native/ReactCommon/react/timing/PrivacyInfo.xcprivacy
+› Preparing Pods/React-cxxreact-React-cxxreact_privacy » ResourceBundle-React-cxxreact_privacy-React-cxxreact-Info.plist
+› Copying   React-cxxreact/React-cxxreact_privacy.bundle/PrivacyInfo.xcprivacy ➜ node_modules/react-native/ReactCommon/cxxreact/PrivacyInfo.xcprivacy
+› Creating  Pods/React-timing-React-timing_privacy » React-timing_privacy.bundle
+› Creating  Pods/React-cxxreact-React-cxxreact_privacy » React-cxxreact_privacy.bundle
+› Preparing Pods/ExpoFileSystem-ExpoFileSystem_privacy » ResourceBundle-ExpoFileSystem_privacy-ExpoFileSystem-Info.plist
+› Preparing Pods/EXConstants-ExpoConstants_privacy » ResourceBundle-ExpoConstants_privacy-EXConstants-Info.plist
+› Copying   EXConstants/ExpoConstants_privacy.bundle/PrivacyInfo.xcprivacy ➜ node_modules/expo/node_modules/expo-constants/ios/PrivacyInfo.xcprivacy
+› Preparing expo-constants Pods/EXConstants-EXConstants » ResourceBundle-EXConstants-EXConstants-Info.plist
+› Creating  Pods/ExpoFileSystem-ExpoFileSystem_privacy » ExpoFileSystem_privacy.bundle
+› Creating  Pods/EXConstants-ExpoConstants_privacy » ExpoConstants_privacy.bundle
+› Creating  expo-constants Pods/EXConstants-EXConstants » EXConstants.bundle
+› Executing react-native Pods/hermes-engine » [CP] Copy XCFrameworks
+› Executing react-native Pods/ReactNativeDependencies » [CP] Copy XCFrameworks
+› Executing react-native Pods/React-Core-prebuilt » [CP-User] [RNCore] Replace React Native Core for the right configuration, if needed
+› Executing react-native Pods/React-Core-prebuilt » [CP] Copy XCFrameworks
+› Executing expo-modules-jsi Pods/ExpoModulesJSI » [CP-User] Build ExpoModulesJSI xcframework
+› Executing react-native Pods/React-RCTFBReactNativeSpec » [CP-User] [RN]Check FBReactNativeSpec
+› Executing dayli-step-tracker Pods/ReactCodegen » [CP-User] Generate Specs
+› Executing dayli-step-tracker Pods/ReactCodegen » [Expo] Remove duplicate codegen output
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTUnstableModulesRequiringMainQueueSetupProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTModuleProviders.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTThirdPartyComponentsProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTModulesConformingToProtocolsProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTUnstableModulesRequiringMainQueueSetupProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTThirdPartyComponentsProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTModulesConformingToProtocolsProvider.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » RCTModuleProviders.mm
+› Compiling dayli-step-tracker Pods/ReactAppDependencyProvider » RCTAppDependencyProvider.mm
+› Executing expo-modules-jsi Pods/ExpoModulesJSI » [CP] Copy XCFrameworks
+› Compiling dayli-step-tracker Pods/ReactAppDependencyProvider » RCTAppDependencyProvider.mm
+› Compiling expo Pods/ExpoLogBox » ExpoRedBoxSwap.mm
+› Compiling expo Pods/ExpoLogBox » ExpoRedBoxSwap.mm
+› Compiling dayli-step-tracker Pods/ReactCodegen » ReactCodegen-dummy.m
+› Compiling dayli-step-tracker Pods/ReactAppDependencyProvider » ReactAppDependencyProvider-dummy.m
+› Packaging dayli-step-tracker Pods/ReactCodegen » libReactCodegen.a
+› Compiling dayli-step-tracker Pods/ReactCodegen » ReactCodegen-dummy.m
+› Compiling dayli-step-tracker Pods/ReactAppDependencyProvider » ReactAppDependencyProvider-dummy.m
+› Packaging dayli-step-tracker Pods/ReactCodegen » libReactCodegen.a
+› Packaging dayli-step-tracker Pods/ReactAppDependencyProvider » libReactAppDependencyProvider.a
+› Packaging dayli-step-tracker Pods/ReactAppDependencyProvider » libReactAppDependencyProvider.a
+› Executing expo-modules-core Pods/ExpoModulesCore » [CP-User] [Expo] Resolve ExpoModulesCore dSYM source maps
+› Compiling @expo/log-box Pods/ExpoLogBox » ExpoLogBox-dummy.m
+› Executing expo-modules-core Pods/ExpoModulesCore » [CP-User] [Expo] Switch ExpoModulesCore XCFramework for build configuration
+› Packaging @expo/log-box Pods/ExpoLogBox » libExpoLogBox.a
+› Compiling @expo/log-box Pods/ExpoLogBox » ExpoLogBox-dummy.m
+› Packaging @expo/log-box Pods/ExpoLogBox » libExpoLogBox.a
+› Executing @expo/log-box Pods/ExpoLogBox » Copy generated compatibility header
+› Executing expo-modules-core Pods/ExpoModulesCore » [CP] Copy XCFrameworks
+› Executing expo-file-system Pods/ExpoFileSystem » [CP-User] [Expo] Resolve ExpoFileSystem dSYM source maps
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Resolve ExpoModulesWorklets dSYM source maps
+› Executing expo-font Pods/ExpoFont » [CP-User] [Expo] Resolve ExpoFont dSYM source maps
+› Executing expo-constants Pods/EXConstants » [CP-User] Generate app.config for prebuilt Constants.manifest
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Switch ExpoModulesWorklets XCFramework for build configuration
+› Executing expo-font Pods/ExpoFont » [CP-User] [Expo] Switch ExpoFont XCFramework for build configuration
+› Executing expo-file-system Pods/ExpoFileSystem » [CP-User] [Expo] Switch ExpoFileSystem XCFramework for build configuration
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP] Copy XCFrameworks
+› Executing expo-font Pods/ExpoFont » [CP] Copy XCFrameworks
+› Executing expo-file-system Pods/ExpoFileSystem » [CP] Copy XCFrameworks
+› Compiling expo-keep-awake Pods/ExpoKeepAwake » ExpoKeepAwake-dummy.m
+› Packaging expo-keep-awake Pods/ExpoKeepAwake » libExpoKeepAwake.a
+› Compiling expo Pods/EXConstants » EXConstantsInstallationIdProvider.m
+› Compiling expo-keep-awake Pods/ExpoKeepAwake » ExpoKeepAwake-dummy.m
+› Compiling expo-constants Pods/EXConstants » EXConstants-dummy.m
+› Packaging expo-keep-awake Pods/ExpoKeepAwake » libExpoKeepAwake.a
+› Executing expo-keep-awake Pods/ExpoKeepAwake » Copy generated compatibility header
+› Compiling expo Pods/EXConstants » EXConstantsInstallationIdProvider.m
+› Compiling expo-constants Pods/EXConstants » EXConstants-dummy.m
+› Compiling expo-status-bar Pods/ExpoStatusBar » ExpoStatusBar-dummy.m
+› Packaging expo-status-bar Pods/ExpoStatusBar » libExpoStatusBar.a
+› Compiling expo-status-bar Pods/ExpoStatusBar » ExpoStatusBar-dummy.m
+› Packaging expo-status-bar Pods/ExpoStatusBar » libExpoStatusBar.a
+› Compiling expo-asset Pods/ExpoAsset » ExpoAsset-dummy.m
+› Packaging expo-asset Pods/ExpoAsset » libExpoAsset.a
+› Executing expo-status-bar Pods/ExpoStatusBar » Copy generated compatibility header
+› Compiling expo-asset Pods/ExpoAsset » ExpoAsset-dummy.m
+› Packaging expo-asset Pods/ExpoAsset » libExpoAsset.a
+› Executing expo-asset Pods/ExpoAsset » Copy generated compatibility header
+› Compiling @expo/dom-webview Pods/ExpoDomWebView » ExpoDomWebView-dummy.m
+› Compiling expo Pods/EXConstants » EXConstantsService.m
+› Packaging @expo/dom-webview Pods/ExpoDomWebView » libExpoDomWebView.a
+› Packaging expo-constants Pods/EXConstants » libEXConstants.a
+› Compiling @expo/dom-webview Pods/ExpoDomWebView » ExpoDomWebView-dummy.m
+› Packaging @expo/dom-webview Pods/ExpoDomWebView » libExpoDomWebView.a
+› Executing @expo/dom-webview Pods/ExpoDomWebView » Copy generated compatibility header
+› Compiling expo Pods/EXConstants » EXConstantsService.m
+› Packaging expo-constants Pods/EXConstants » libEXConstants.a
+› Executing expo-constants Pods/EXConstants » Copy generated compatibility header
+› Compiling expo Pods/Expo » EXReactRootViewFactory.mm
+› Compiling expo Pods/Expo » ExpoReactNativeFactory.mm
+› Compiling expo Pods/Expo » EXBundleConfiguration.mm
+› Compiling expo Pods/Expo » ExpoReactNativeFactory.mm
+› Compiling expo Pods/Expo » EXReactRootViewFactory.mm
+› Compiling expo Pods/Expo » EXBundleConfiguration.mm
+› Compiling expo Pods/Expo » Expo-dummy.m
+› Compiling expo Pods/Expo » Expo-dummy.m
+› Compiling expo Pods/Expo » EXLegacyAppDelegateWrapper.m
+› Compiling expo Pods/Expo » EXAppDefinesLoader.m
+› Compiling expo Pods/Expo » EXAppDelegatesLoader.m
+› Packaging expo Pods/Expo » libExpo.a
+› Compiling expo Pods/Expo » EXAppDefinesLoader.m
+› Compiling expo Pods/Expo » EXLegacyAppDelegateWrapper.m
+› Compiling expo Pods/Expo » EXAppDelegatesLoader.m
+› Packaging expo Pods/Expo » libExpo.a
+› Executing expo Pods/Expo » Copy generated compatibility header
+› Compiling Pods/Pods-DayliStepTracker » Pods-DayliStepTracker-dummy.m
+› Compiling Pods/Pods-DayliStepTracker » Pods-DayliStepTracker-dummy.m
+› Packaging Pods/Pods-DayliStepTracker » libPods-DayliStepTracker.a
+› Packaging Pods/Pods-DayliStepTracker » libPods-DayliStepTracker.a
+› Executing DayliStepTracker » [CP] Check Pods Manifest.lock
+› Executing DayliStepTracker » [Expo] Configure project
+    The @ExpoModule class 'CoreModule' (/Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-11-qa/node_modules/expo-modules-core/ios/Core/Modules/CoreModule.swift) is internal, so the generated modules provider cannot reference it. Declare it public to link it automatically, or use a lower access level such as private to opt it out of linking.
+› Copying   ./PrivacyInfo.xcprivacy ➜ ios/DayliStepTracker/PrivacyInfo.xcprivacy
+› Copying   ios/DayliStepTracker/Supporting/Expo.plist ➜ ./Expo.plist
+› Compiling DayliStepTracker » SplashScreen.storyboard
+›  DayliStepTracker » dayli-step-tracker/.c
+› Preparing DayliStepTracker » Info.plist
+› Compiling DayliStepTracker » DayliStepTracker_vers.c
+› Compiling DayliStepTracker » DayliStepTracker_vers.c
+› Linking   DayliStepTracker » DayliStepTracker
+› Linking   DayliStepTracker » DayliStepTracker
+› Generating debug DayliStepTracker » DayliStepTracker.app.dSYM
+› Executing DayliStepTracker » Bundle React Native code and images
+    Eager bundle does not match new options, bundling again.
+› Executing DayliStepTracker » [CP] Copy Pods Resources
+› Executing DayliStepTracker » [CP] Embed Pods Frameworks
+› Signing   DayliStepTracker » DayliStepTracker.app
+› Creating  DayliStepTracker » DayliStepTracker.app
+› Build Succeeded
+
+› 0 error(s), and 2 warning(s)
+
+Copied to /tmp/issue-11-qa-v1-build/DayliStepTracker.app
+Waiting on http://localhost:8081
+› Installing /tmp/issue-11-qa-v1-build/DayliStepTracker.app
+› Installing on iPhone 17
+› Opening on iPhone 17 (com.anonymous.dayli-step-tracker)
+› Opening com.anonymous.dayli-step-tracker://?__expo_url=http%3A%2F%2F192.168.1.8%3A8081&__expo_disable_fab=1&__expo_disable_auto_launch=1&__expo_disable_onboarding=1 on iPhone 17
