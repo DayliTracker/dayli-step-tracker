@@ -43,13 +43,14 @@ test('Settings lists all destinations and clear-data actions are preview-only', 
 
 test('interactive controls have accessible names and at least 48-point touch targets', () => {
   const pressables = Array.from(appSource.matchAll(/<Pressable\b([\s\S]*?)>/g), (match) => match[1]);
-  assert.equal(pressables.length, 4);
+  // 4 shell controls + the per-date manual-entry control in the Progress rows.
+  assert.equal(pressables.length, 5);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
   }
 
-  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'tab']) {
+  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'tab', 'manualAction']) {
     const style = appSource.match(new RegExp(`${styleName}:\\s*\\{[^}]*minHeight:\\s*(\\d+)`));
     assert.ok(style, `${styleName} must declare a touch target`);
     assert.ok(Number(style[1]) >= 48, `${styleName} must be at least 48 points high`);

@@ -7,6 +7,9 @@ import {
 } from './src/navigation';
 import { getCopy, type Locale } from './src/localization';
 import {
+  formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
+} from './src/progress';
+import {
   DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
   progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
@@ -172,29 +175,43 @@ function DuckArt({ cheer }: { cheer: boolean }) {
 
 function Progress({ locale }: { locale: Locale }) {
   const copy = getCopy(locale);
-  const dates = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - index);
-    return date;
-  });
+  const dates = lastSevenLocalDates(new Date());
+  // Phase 1 shell: no data owner exists yet, so every row truthfully renders
+  // the "unavailable" snapshot — same shape Today uses. Phase 2 passes real
+  // per-day totals, goals, and manual entries through this same slot layout.
+  const previewManualEntry = () => Alert.alert(
+    copy.manualPreviewTitle, copy.manualPreviewMessage, [{ text: copy.gotIt }],
+  );
   return (
     <View>
       <Text style={s.intro}>{copy.progressIntro}</Text>
       {dates.map((date, index) => {
-        const label = index ? date.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
-          weekday: 'short', month: 'short', day: 'numeric',
-        }) : copy.dateToday;
+        const label = index ? formatRowDate(date, locale) : copy.dateToday;
         const goal = `${formatNumber(DEFAULT_GOAL, locale)} ${copy.steps}`;
         return (
-          <View key={date.toISOString()} accessible
-            accessibilityLabel={`${label}. ${copy.detailsUnavailable} ${copy.goal}: ${goal}. ${copy.sourceUnavailable}`}
-            style={s.progressRow}>
-            <View style={s.rowTop}>
-              <Text style={s.rowTitle}>{label}</Text>
-              <Text style={s.rowValue} accessibilityElementsHidden>— {copy.steps}</Text>
+          <View key={localDateKey(date)} style={s.progressRow}>
+            {/* The `accessible` group wraps only the three slot lines. An
+                `accessible` container flattens every descendant into one
+                element on iOS, so a button inside it vanishes from the
+                VoiceOver tree; the manual-entry control stays a sibling. */}
+            <View
+              accessible
+              accessibilityLabel={progressRowA11yLabel(
+                label, { kind: 'unavailable' }, DEFAULT_GOAL, locale, copy,
+              )}
+            >
+              <View style={s.rowTop}>
+                <Text style={s.rowTitle}>{label}</Text>
+                <Text style={s.rowValue} accessibilityElementsHidden>— {copy.steps}</Text>
+              </View>
+              <Text style={s.muted}>{copy.goal}: {goal}</Text>
+              <Text style={s.muted}>{copy.sourceUnavailable}</Text>
             </View>
-            <Text style={s.muted}>{copy.goal}: {goal}</Text>
-            <Text style={s.muted}>{copy.sourceUnavailable}</Text>
+            <Pressable accessibilityRole="button"
+              accessibilityLabel={`${copy.addManualTotal} — ${label}`}
+              onPress={previewManualEntry} style={s.manualAction}>
+              <Text style={s.manualActionText}>{copy.addManualTotal}</Text>
+            </Pressable>
           </View>
         );
       })}
@@ -330,9 +347,18 @@ const s = StyleSheet.create({
     minHeight: 84, padding: 14, marginBottom: 10, borderRadius: 17,
     backgroundColor: '#FFFDF8', borderWidth: 1, borderColor: '#E8DDCB',
   },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowTop: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    justifyContent: 'space-between', alignItems: 'center',
+  },
   rowTitle: { color: '#5B4634', fontSize: 16, fontWeight: '700', flexShrink: 1 },
   rowValue: { color: '#5B4634', fontSize: 14, fontWeight: '700' },
+  manualAction: {
+    minHeight: 48, marginTop: 10, paddingHorizontal: 14, alignSelf: 'stretch',
+    alignItems: 'center', justifyContent: 'center', borderRadius: 14, borderWidth: 1,
+    borderColor: '#D8CCB9', backgroundColor: '#F4FBF7',
+  },
+  manualActionText: { color: '#326D52', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   list: { gap: 10, marginTop: 14, alignSelf: 'stretch' },
   settingsRow: {
     minHeight: 70, flexDirection: 'row', alignItems: 'center', padding: 14,
