@@ -10,7 +10,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.anonymous.dayli-step-tracker"
     },
     "web": {
       "favicon": "./assets/favicon.png"
