@@ -189,17 +189,24 @@ function Progress({ locale }: { locale: Locale }) {
         const label = index ? formatRowDate(date, locale) : copy.dateToday;
         const goal = `${formatNumber(DEFAULT_GOAL, locale)} ${copy.steps}`;
         return (
-          <View key={localDateKey(date)} accessible
-            accessibilityLabel={progressRowA11yLabel(
-              label, { kind: 'unavailable' }, DEFAULT_GOAL, locale, copy,
-            )}
-            style={s.progressRow}>
-            <View style={s.rowTop}>
-              <Text style={s.rowTitle}>{label}</Text>
-              <Text style={s.rowValue} accessibilityElementsHidden>— {copy.steps}</Text>
+          <View key={localDateKey(date)} style={s.progressRow}>
+            {/* The `accessible` group wraps only the three slot lines. An
+                `accessible` container flattens every descendant into one
+                element on iOS, so a button inside it vanishes from the
+                VoiceOver tree; the manual-entry control stays a sibling. */}
+            <View
+              accessible
+              accessibilityLabel={progressRowA11yLabel(
+                label, { kind: 'unavailable' }, DEFAULT_GOAL, locale, copy,
+              )}
+            >
+              <View style={s.rowTop}>
+                <Text style={s.rowTitle}>{label}</Text>
+                <Text style={s.rowValue} accessibilityElementsHidden>— {copy.steps}</Text>
+              </View>
+              <Text style={s.muted}>{copy.goal}: {goal}</Text>
+              <Text style={s.muted}>{copy.sourceUnavailable}</Text>
             </View>
-            <Text style={s.muted}>{copy.goal}: {goal}</Text>
-            <Text style={s.muted}>{copy.sourceUnavailable}</Text>
             <Pressable accessibilityRole="button"
               accessibilityLabel={`${copy.addManualTotal} — ${label}`}
               onPress={previewManualEntry} style={s.manualAction}>

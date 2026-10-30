@@ -28,7 +28,9 @@ export function formatRowDate(date: Date, locale: Locale): string {
 /**
  * Single screen-reader sentence for one Progress row. Mirrors the three
  * visible slots — total, goal, source — so an absent total is announced as
- * unavailable, never as a zero or any other measurement.
+ * unavailable, never as a zero or any other measurement. Slot copy arrives
+ * with its own trailing period (e.g. `stepsUnavailable`), so each slot is
+ * normalized to exactly one period before joining.
  */
 export function progressRowA11yLabel(
   dateLabel: string, snapshot: TodaySnapshot, goal: number, locale: Locale, copy: Copy,
@@ -40,5 +42,6 @@ export function progressRowA11yLabel(
   const source = snapshot.kind === 'loaded'
     ? `${copy.sourceLabel}: ${snapshot.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
     : copy.sourceUnavailable;
-  return `${dateLabel}. ${total}. ${goalLine}. ${source}.`;
+  const sentence = (slot: string) => `${slot.replace(/\.+$/, '')}.`;
+  return `${sentence(dateLabel)} ${sentence(total)} ${sentence(goalLine)} ${sentence(source)}`;
 }
