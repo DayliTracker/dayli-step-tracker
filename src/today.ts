@@ -64,30 +64,37 @@ export function goalReached(snapshot: TodaySnapshot, goal: number): boolean {
 /**
  * Single screen-reader description for the Today summary. Carries the exact
  * count, goal, uncapped ratio, goal-reached flag, and source, so the ring's
- * color and fill are never the only status cue.
+ * color and fill are never the only status cue. Slot copy often arrives with
+ * its own trailing period (e.g. `stepsUnavailable`), so every slot is
+ * normalized to exactly one sentence terminator before joining — never a
+ * doubled period for screen readers.
  */
 export function todayA11yLabel(
   snapshot: TodaySnapshot, goal: number, locale: Locale, copy: Copy,
 ): string {
   const goalLine = `${copy.goal}: ${formatNumber(goal, locale)} ${copy.steps}`;
+  const sentence = (slot: string) => {
+    const trimmed = slot.replace(/\.+$/u, '');
+    return /[!?…]$/u.test(trimmed) ? trimmed : `${trimmed}.`;
+  };
   switch (snapshot.kind) {
     case 'loading':
-      return `${copy.todayLoading}. ${goalLine}.`;
+      return `${sentence(copy.todayLoading)} ${sentence(goalLine)}`;
     case 'empty':
-      return `${copy.todayEmpty}. ${goalLine}.`;
+      return `${sentence(copy.todayEmpty)} ${sentence(goalLine)}`;
     case 'unavailable':
-      return `${copy.stepsUnavailable}. ${goalLine}.`;
+      return `${sentence(copy.stepsUnavailable)} ${sentence(goalLine)}`;
     case 'error':
-      return `${copy.todayError}. ${goalLine}.`;
+      return `${sentence(copy.todayError)} ${sentence(goalLine)}`;
     case 'loaded': {
       const source = snapshot.source === 'health' ? copy.sourceHealth : copy.sourceManual;
       return [
-        `${formatNumber(snapshot.steps, locale)} ${copy.steps}.`,
-        `${goalLine}.`,
-        `${formatRatio(progressRatio(snapshot.steps, goal), locale)} ${copy.ratioOfGoal}.`,
-        goalReached(snapshot, goal) ? `${copy.goalReached}` : '',
-        `${copy.sourceLabel}: ${source}.`,
-      ].filter(Boolean).join(' ');
+        `${formatNumber(snapshot.steps, locale)} ${copy.steps}`,
+        goalLine,
+        `${formatRatio(progressRatio(snapshot.steps, goal), locale)} ${copy.ratioOfGoal}`,
+        goalReached(snapshot, goal) ? copy.goalReached : '',
+        `${copy.sourceLabel}: ${source}`,
+      ].filter(Boolean).map(sentence).join(' ');
     }
   }
 }
