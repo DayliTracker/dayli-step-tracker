@@ -1,3 +1,4 @@
+import { sentenceSlot } from './a11y-text.ts';
 import type { Copy, Locale } from './localization';
 import { formatNumber, type TodaySnapshot } from './today.ts';
 
@@ -29,8 +30,10 @@ export function formatRowDate(date: Date, locale: Locale): string {
  * Single screen-reader sentence for one Progress row. Mirrors the three
  * visible slots — total, goal, source — so an absent total is announced as
  * unavailable, never as a zero or any other measurement. Slot copy arrives
- * with its own trailing period (e.g. `stepsUnavailable`), so each slot is
- * normalized to exactly one period before joining.
+ * with its own trailing period (e.g. `stepsUnavailable`), so each slot goes
+ * through the shared `sentenceSlot` normalizer before joining — exactly one
+ * terminator each, and a slot ending in `!`, `?` or `…` keeps its own
+ * instead of gaining a doubled one.
  */
 export function progressRowA11yLabel(
   dateLabel: string, snapshot: TodaySnapshot, goal: number, locale: Locale, copy: Copy,
@@ -42,6 +45,7 @@ export function progressRowA11yLabel(
   const source = snapshot.kind === 'loaded'
     ? `${copy.sourceLabel}: ${snapshot.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
     : copy.sourceUnavailable;
-  const sentence = (slot: string) => `${slot.replace(/\.+$/, '')}.`;
-  return `${sentence(dateLabel)} ${sentence(total)} ${sentence(goalLine)} ${sentence(source)}`;
+  return [
+    sentenceSlot(dateLabel), sentenceSlot(total), sentenceSlot(goalLine), sentenceSlot(source),
+  ].join(' ');
 }
