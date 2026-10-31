@@ -7,7 +7,7 @@
  * Values are the exact literals the approved screens render with; tokens give
  * them names, not new values. Component sizing stays beside the components
  * that own it: touch-target minHeight values (locked by tests), and the
- * ring/duck geometry constants in App.tsx and src/duck.ts.
+ * ring geometry and mascot slot constants in App.tsx.
  */
 
 /**

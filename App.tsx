@@ -18,14 +18,22 @@ import {
   DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
   progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
-import { DUCK_CHEER, DUCK_IDLE, DUCK_PALETTE, DUCK_SIZE } from './src/duck';
+import PixelPet from './components/PixelPet';
+import { PETS } from './components/pets';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
 const RING_SIZE = 190;
 const RING_RADIUS = 86;
 const RING_SEGMENT_WIDTH = 5;
 const RING_SEGMENT_HEIGHT = 11;
-const DUCK_SCALE = 8;
+// The mascot slot: 150 renders the supersampled frames as a crisp downscale,
+// and the slot reserves the poke heart's rise (the engine lifts it 0.6 × size
+// above the pet box) so no mascot state draws over the text above it.
+const PET_SIZE = 150;
+const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
+// The character slot takes the first registered pet; the registry grows as
+// /mascot lands new animals (components/pets.ts).
+const pet = PETS[0];
 const isPrimary = (screen: NavigationState['screen']) => screen === 'today' || screen === 'progress';
 
 export default function App() {
@@ -107,6 +115,11 @@ function Today({ date, locale }: { date: string; locale: Locale }) {
   const [snapshot] = useState<TodaySnapshot>({ kind: 'unavailable' });
   const loaded = snapshot.kind === 'loaded' ? snapshot : null;
   const reached = goalReached(snapshot, DEFAULT_GOAL);
+  // Progress drives the pet's mood machine: idle at rest, a walk burst on
+  // rising steps, celebrate at the goal — and back to idle when a new day
+  // resets progress below 1. The truthful phase-1 snapshot has no steps, so
+  // the pet idles today; phase 3 feeds real snapshots through the same shape.
+  const progress = loaded ? Math.min(progressRatio(loaded.steps, DEFAULT_GOAL), 1) : 0;
   const summary = loaded
     ? `${formatRatio(progressRatio(loaded.steps, DEFAULT_GOAL), locale)} ${copy.ratioOfGoal}`
     : snapshot.kind === 'loading' ? copy.todayLoading
@@ -139,7 +152,17 @@ function Today({ date, locale }: { date: string; locale: Locale }) {
             ? `${copy.sourceLabel}: ${loaded.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
             : copy.sourceUnavailable}
         </Text>
-        <DuckArt cheer={reached} />
+        {/* Decorative slot: hidden from the accessibility tree (both platforms)
+            so the ring summary stays the screen-reader source. The slot's fixed
+            height reserves the poke heart's rise above the pet. */}
+        <View
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={s.petSlot}
+        >
+          <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
+        </View>
         {reached && <Text style={s.cheer}>{copy.goalReached}</Text>}
       </View>
     </View>
@@ -163,28 +186,6 @@ function Ring({ lit }: { lit: number }) {
           ]}
         />
       ))}
-    </View>
-  );
-}
-
-/** Original Dayli duck: runtime pixel grid, frame-swapped on goal reach. */
-function DuckArt({ cheer }: { cheer: boolean }) {
-  const rows = cheer ? DUCK_CHEER : DUCK_IDLE;
-  return (
-    <View
-      accessible={false}
-      importantForAccessibility="no-hide-descendants"
-      style={[s.duck, { width: DUCK_SIZE * DUCK_SCALE, height: DUCK_SIZE * DUCK_SCALE }]}
-    >
-      {rows.flatMap((row, y) => row.split('').map((pixel, x) => pixel === '.' ? null : (
-        <View
-          key={`${x}:${y}`}
-          style={{
-            position: 'absolute', width: DUCK_SCALE, height: DUCK_SCALE,
-            left: x * DUCK_SCALE, top: y * DUCK_SCALE, backgroundColor: DUCK_PALETTE[pixel],
-          }}
-        />
-      )))}
     </View>
   );
 }
@@ -354,7 +355,10 @@ const s = StyleSheet.create({
   },
   ringSegmentLit: { backgroundColor: colors.ringLit },
   ringCenter: { alignItems: 'center', maxWidth: 2 * (RING_RADIUS - RING_SEGMENT_HEIGHT - spacing.lg) },
-  duck: { marginTop: spacing.section, alignSelf: 'center' },
+  petSlot: {
+    marginTop: spacing.section, alignSelf: 'center',
+    height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
+  },
   cheer: { color: colors.accentText, fontSize: typeSize.small, fontFamily: typeFace.display.bold,
     marginTop: spacing.lg, textAlign: 'center' },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,

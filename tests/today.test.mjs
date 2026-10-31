@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { getCopy } from '../src/localization.ts';
 import {
   DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
   progressRatio, segmentAngle, todayA11yLabel,
 } from '../src/today.ts';
-import { DUCK_CHEER, DUCK_IDLE, DUCK_PALETTE, DUCK_SIZE } from '../src/duck.ts';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const engineSource = readFileSync(new URL('../components/PixelPet.tsx', import.meta.url), 'utf8');
+const registrySource = readFileSync(new URL('../components/pets.ts', import.meta.url), 'utf8');
 
 test('ring fills toward the goal and visually caps there without passing it', () => {
   assert.equal(litSegments(0, DEFAULT_GOAL), 0);
@@ -102,26 +103,113 @@ test('a11y label never doubles a period in any snapshot kind or locale', () => {
   assert.doesNotMatch(loading, /…\./, 'an ellipsis slot must not gain a period after it');
 });
 
-test('duck artwork is complete, palette-bound, and changes pose on goal reach', () => {
-  for (const art of [DUCK_IDLE, DUCK_CHEER]) {
-    assert.equal(art.length, DUCK_SIZE);
-    for (const row of art) {
-      assert.equal(row.length, DUCK_SIZE);
-      for (const pixel of row) {
-        assert.ok(pixel === '.' || pixel in DUCK_PALETTE, `unknown pixel '${pixel}'`);
-      }
-    }
+test('mascot pack ships every frame and particle, and the registry mounts the duck', () => {
+  for (const frame of [
+    'duck_idle', 'duck_blink', 'duck_look', 'duck_walk_a', 'duck_walk_b',
+    'duck_happy', 'duck_surprised', 'particle_heart', 'particle_star',
+  ]) {
+    assert.ok(
+      existsSync(new URL(`../assets/mascots/duck/${frame}.png`, import.meta.url)),
+      `${frame}.png must ship in the pack`,
+    );
   }
-  assert.notEqual(DUCK_IDLE.join(''), DUCK_CHEER.join(''));
+  assert.match(registrySource, /id: 'duck'/);
+  for (const frame of ['duck_idle', 'duck_surprised', 'particle_heart', 'particle_star']) {
+    assert.match(registrySource, new RegExp(`require\\('\\.\\./assets/mascots/duck/${frame}\\.png'\\)`));
+  }
 });
 
-test('Today wires every state, the ring fill, the source, and the character art', () => {
+test('PixelPet mood machine: walk plays on a rise, celebrate at the goal, both exit when progress falls', () => {
+  // Extract the mood-machine effect (the first useEffect in the engine) and
+  // drive it through faithful React effect semantics: effects run on mount
+  // and re-run across renders when a listed dependency changes (Object.is),
+  // refs persist, and a setState to the value already held bails out without
+  // a re-render. Regression pin for review round 1 (R1): keying the machine
+  // on `mood` re-ran it one render after it entered walk, where no fresh rise
+  // was visible and the burst self-canceled straight back to idle.
+  const machine = engineSource.match(/useEffect\(\(\) => \{([\s\S]*?)\}, \[([^\]]*)\]\);/);
+  assert.ok(machine, 'the mood machine must be the first useEffect in PixelPet.tsx');
+  const deps = machine[2].split(',').map((d) => d.trim()).filter(Boolean);
+  assert.deepEqual(deps, ['progress'],
+    'mood decisions come from progress transitions only; a mood dependency re-runs the machine and self-cancels walk');
+  const drive = (script) => {
+    let mood = script.start >= 1 ? 'celebrate' : 'idle'; // the useState initializer
+    let progress = script.start;
+    const prevProgress = { current: progress };
+    const runEffect = () => {
+      let next = null;
+      new Function('progress', 'mood', 'setMood', 'prevProgress', machine[1])(
+        progress, mood, (m) => { next = m; }, prevProgress,
+      );
+      return next;
+    };
+    const settle = () => {
+      for (let i = 0; i < 20; i += 1) {
+        const next = runEffect();
+        if (next === null || next === mood) return mood;
+        mood = next;
+        if (!deps.includes('mood')) return mood; // mood is not a dependency: no re-run
+      }
+      throw new Error('mood machine never settles');
+    };
+    settle(); // mount pass: effects run once
+    const moods = [];
+    for (const step of script.then) {
+      if (step === progress) { moods.push(mood); continue; } // dep held: no re-run
+      progress = step;
+      moods.push(settle());
+    }
+    return moods;
+  };
+  assert.deepEqual(drive({ start: 0, then: [0.5] }), ['walk'],
+    'a rising progress must enter walk and hold it (R1: the burst self-canceled)');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 1] }), ['walk', 'celebrate'],
+    'progress reaching the goal celebrates');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 1, 0] }), ['walk', 'celebrate', 'idle'],
+    'a new-day reset must exit celebrate, or the pet celebrates forever');
+  assert.deepEqual(drive({ start: 0, then: [0.4, 0.2] }), ['walk', 'idle'],
+    'a falling progress exits walk too');
+  assert.deepEqual(drive({ start: 1, then: [0.5] }), ['idle'],
+    'a pet mounted at the goal exits celebrate when progress falls');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 0.5] }), ['walk', 'walk'],
+    'held progress must not re-run the machine and must hold walk');
+});
+
+test('PixelPet walk bursts settle back to idle and a mood change resets the idle face', () => {
+  // The WALK_MS timer is the only exit from walk after a rise; the frame-timer
+  // cleanup resets the idle face so a mood change firing mid-blink or
+  // mid-look cannot leave idle holding the wrong face.
+  assert.match(engineSource, /setTimeout\(\(\) => setMood\('idle'\), WALK_MS\)/,
+    'walk must settle back to idle on its own timer');
+  assert.match(engineSource, /setIdleFrame\('idle'\)/,
+    'a mood change mid-blink or mid-look must not leave idle holding the wrong face');
+});
+
+test('the mascot slot reserves headroom for the poke heart, so no pet state covers the labels', () => {
+  // The engine lifts the poke heart at most 0.6 × size above the pet box
+  // (PixelPet.tsx), and the Today slot reserves exactly that much headroom
+  // above the pet (App.tsx). Pin both numbers: if either drifts, the heart
+  // or the celebrate sparkles would draw over the step total or source label.
+  assert.match(engineSource, /-size \* 0\.6/,
+    'engine poke heart must rise no further than 0.6 × size above the pet box');
+  assert.match(appSource, /PET_SLOT_HEADROOM = PET_SIZE \* 0\.6/,
+    'slot headroom must stay at 0.6 × PET_SIZE to cover the heart rise');
+  assert.match(appSource, /height: PET_SIZE \+ PET_SLOT_HEADROOM, justifyContent: 'flex-end'/,
+    'the pet sits at the slot bottom with the headroom free above it');
+});
+
+test('Today wires the animated pet: mood-driving progress, decorative slot, and the cheer text', () => {
   assert.match(appSource, /todayA11yLabel\(snapshot/);
   assert.match(appSource, /litSegments\(loaded\.steps, DEFAULT_GOAL\)/);
   assert.match(appSource, /copy\.sourceHealth/);
   assert.match(appSource, /copy\.sourceManual/);
   assert.match(appSource, /goalReached\(snapshot, DEFAULT_GOAL\)/);
-  assert.match(appSource, /cheer \? DUCK_CHEER : DUCK_IDLE/);
+  assert.match(appSource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
+  assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, DEFAULT_GOAL\), 1\)/,
+    'today progress is capped at 1 before it reaches the mood machine');
+  assert.match(appSource, /accessibilityElementsHidden/,
+    'the pet slot must hide itself and its poke control from VoiceOver');
+  assert.match(appSource, /copy\.goalReached/, 'the goal-reached cheer text stays in the flow');
   for (const kind of ['loading', 'empty', 'unavailable', 'error', 'loaded']) {
     assert.ok(appSource.includes(`'${kind}'`), `state ${kind} must appear in the Today presentation`);
   }
