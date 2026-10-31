@@ -16,12 +16,14 @@ const english = {
   manualPreviewMessage: 'Manual entry for a date arrives in a later phase. Nothing was saved.',
   goalTitle: 'Daily step goal', languageTitle: 'Language', healthTitle: 'Health access',
   clearTitle: 'Clear app data', goalSubtitle: 'Current default: 8,000 steps',
-  languageSubtitle: 'Choose a display language for this session',
+  languageSubtitle: 'Choose a display language',
   healthSubtitle: 'Health access settings',
   clearSubtitle: 'Confirmation preview only. Nothing will be deleted.',
   dataDisclosure: 'Your data stays on this device and may be lost if you uninstall the app or replace your device.',
   goalLater: 'Goal editing will be added later. 8,000 is the product default, not a saved setting.',
-  languageTemporary: 'This choice is temporary and resets when the app is closed.',
+  languagePersisted: 'Your choice is saved on this device and applies until you change it.',
+  languageDevice: 'Use device language',
+  languageStorageError: 'Your language settings could not be read or saved on this device.',
   healthLater: 'Health controls will be added later. This shell does not request or change permissions.',
   clearConfirmTitle: 'Clear app data?',
   clearConfirmMessage: 'This is a preview only. No app data will be cleared in this phase.',
@@ -51,12 +53,14 @@ const translations: Record<Locale, Copy> = {
     goalTitle: 'Mục tiêu bước chân', languageTitle: 'Ngôn ngữ',
     healthTitle: 'Quyền truy cập Sức khỏe', clearTitle: 'Xóa dữ liệu ứng dụng',
     goalSubtitle: 'Mặc định hiện tại: 8.000 bước',
-    languageSubtitle: 'Chọn ngôn ngữ hiển thị cho phiên này',
+    languageSubtitle: 'Chọn ngôn ngữ hiển thị',
     healthSubtitle: 'Cài đặt quyền truy cập Sức khỏe',
     clearSubtitle: 'Chỉ xem trước xác nhận. Không có dữ liệu nào bị xóa.',
     dataDisclosure: 'Dữ liệu chỉ lưu trên thiết bị này và có thể mất khi gỡ ứng dụng hoặc đổi thiết bị.',
     goalLater: 'Chỉnh sửa mục tiêu sẽ có sau. 8.000 là mặc định của sản phẩm, chưa được lưu.',
-    languageTemporary: 'Lựa chọn này chỉ tạm thời và sẽ đặt lại khi đóng ứng dụng.',
+    languagePersisted: 'Lựa chọn được lưu trên thiết bị này và có hiệu lực đến khi bạn thay đổi.',
+    languageDevice: 'Dùng ngôn ngữ của thiết bị',
+    languageStorageError: 'Không thể đọc hoặc lưu cài đặt ngôn ngữ trên thiết bị này.',
     healthLater: 'Cài đặt quyền Sức khỏe sẽ có sau. Phiên bản này không yêu cầu hoặc thay đổi quyền.',
     clearConfirmTitle: 'Xóa dữ liệu ứng dụng?',
     clearConfirmMessage: 'Đây chỉ là màn hình xem trước. Dữ liệu sẽ không bị xóa trong giai đoạn này.',
@@ -68,4 +72,19 @@ const translations: Record<Locale, Copy> = {
 
 export function getCopy(locale: Locale): Copy {
   return translations[locale];
+}
+
+/**
+ * Vietnamese device locale → Vietnamese, otherwise English (phase-02 spec).
+ * Tags are BCP 47 (`vi-VN`); any preferred locale starting with `vi` counts —
+ * a device that lists Vietnamese among its preferred languages reads
+ * Vietnamese. An empty or unrecognized list falls back to English.
+ */
+export function resolveDeviceLocale(languageTags: readonly string[]): Locale {
+  return languageTags.some((tag) => tag.toLowerCase().startsWith('vi')) ? 'vi' : 'en';
+}
+
+/** The saved override wins; without one the device decides. */
+export function resolveInitialLocale(device: Locale, override: Locale | null): Locale {
+  return override ?? device;
 }
