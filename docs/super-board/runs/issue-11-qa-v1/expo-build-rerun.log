@@ -1,0 +1,31 @@
+› Executing expo-modules-core Pods/ExpoModulesCore » [CP] Copy XCFrameworks
+› Executing expo-constants Pods/EXConstants » [CP-User] Generate app.config for prebuilt Constants.manifest
+› Preparing Pods/ExpoFileSystem-ExpoFileSystem_privacy » ResourceBundle-ExpoFileSystem_privacy-ExpoFileSystem-Info.plist
+› Executing expo-file-system Pods/ExpoFileSystem » [CP-User] [Expo] Switch ExpoFileSystem XCFramework for build configuration
+› Executing expo-file-system Pods/ExpoFileSystem » [CP] Copy XCFrameworks
+› Executing expo-font Pods/ExpoFont » [CP-User] [Expo] Switch ExpoFont XCFramework for build configuration
+› Executing expo-font Pods/ExpoFont » [CP] Copy XCFrameworks
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Switch ExpoModulesWorklets XCFramework for build configuration
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP] Copy XCFrameworks
+› Executing DayliStepTracker » [Expo] Configure project
+    The @ExpoModule class 'CoreModule' (/Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-11-qa/node_modules/expo-modules-core/ios/Core/Modules/CoreModule.swift) is internal, so the generated modules provider cannot reference it. Declare it public to link it automatically, or use a lower access level such as private to opt it out of linking.
+› Linking   DayliStepTracker » DayliStepTracker
+› Linking   DayliStepTracker » DayliStepTracker
+› Executing DayliStepTracker » Bundle React Native code and images
+    Eager bundle does not match new options, bundling again.
+› Executing DayliStepTracker » [CP] Copy Pods Resources
+› Executing DayliStepTracker » [CP] Embed Pods Frameworks
+› Preparing DayliStepTracker » Info.plist
+› Generating debug DayliStepTracker » DayliStepTracker.app.dSYM
+› Signing   DayliStepTracker » DayliStepTracker.app
+› Build Succeeded
+
+› 0 error(s), and 2 warning(s)
+
+Copied to /tmp/issue-11-qa-v2-build/DayliStepTracker.app
+Waiting on http://localhost:8081
+› Installing /tmp/issue-11-qa-v2-build/DayliStepTracker.app
+› Installing on iPhone 17
+› Opening on iPhone 17 (com.anonymous.dayli-step-tracker)
+› Opening com.anonymous.dayli-step-tracker://?__expo_url=http%3A%2F%2F192.168.1.8%3A8081&__expo_disable_fab=1&__expo_disable_auto_launch=1&__expo_disable_onboarding=1 on iPhone 17
+BUILD_EXIT=0

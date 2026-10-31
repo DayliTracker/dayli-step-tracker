@@ -75,3 +75,40 @@ Test gaps not written (all Low, none block):
 - `today-unavailable-en-fixed.png` — iPhone 17 (iOS 27.0) screenshot, Today screen
 - `a11y-today-single-period-en.json` — full `idb ui describe-all` dump
 - `expo-build.log` — Expo Release build log (0 errors)
+
+## Re-run verification (2026-10-31, QA re-dispatch)
+
+The first QA worker committed the evidence above but exited before posting its
+report or moving the card. The re-dispatched Tester re-ran every check itself at
+branch tip `778209d` (code identical to `b6ccb61`; the evidence commit touches
+docs only). Verdict unchanged: ✅ PASS — 3/3 AC.
+
+```
+$ npm test              # exit 0 — 25/25 pass, 0 fail
+$ npm run typecheck     # exit 0 — tsc --noEmit clean
+$ sed mutant: sentence() strip dropped → test 7 'a11y label never doubles a
+  period…' goes red (pass 8 / fail 1) → reverted, clean
+$ CI=1 npx expo run:ios --configuration Release \
+    --device 77EC52AC-8FB5-4CE2-B248-A27A071541EE --no-bundler \
+    -o /tmp/issue-11-qa-v2-build        # exit 0 — 0 errors, 2 warnings
+$ xcrun simctl launch 77EC52AC-… com.anonymous.dayli-step-tracker   # pid 77299
+$ idb ui describe-all --udid 77EC52AC-…
+$ xcrun simctl io 77EC52AC-… screenshot today-unavailable-en-rerun.png
+```
+
+Re-run ring label, verbatim from the fresh `idb ui describe-all` dump of the
+newly built Release binary:
+
+```
+"Your step total will appear when step data is connected. Daily goal: 8,000 steps."
+```
+
+Mutant check (the shipped test can fail): reverting only the `sentence()` strip
+(`src/today.ts:77`) makes the invariant test fail — `not ok 7`, 8 pass / 1 fail
+— then restored. The screenshot shows the fixed Today screen rendering.
+
+Additional evidence files from the re-run:
+
+- `today-unavailable-en-rerun.png` — re-captured Today screen
+- `a11y-today-single-period-en-rerun.json` — re-captured `idb ui describe-all` dump
+- `expo-build-rerun.log` — re-run Expo Release build log (0 errors, 2 warnings)
