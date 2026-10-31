@@ -79,6 +79,29 @@ test('loaded summary exposes exact count, goal, uncapped ratio, and source to as
   }
 });
 
+test('a11y label never doubles a period in any snapshot kind or locale', () => {
+  const snapshots = [
+    { kind: 'loading' },
+    { kind: 'empty' },
+    { kind: 'unavailable' },
+    { kind: 'error' },
+    { kind: 'loaded', steps: 12300, source: 'health' },
+  ];
+  for (const locale of ['en', 'vi']) {
+    for (const snapshot of snapshots) {
+      const label = todayA11yLabel(snapshot, DEFAULT_GOAL, locale, getCopy(locale));
+      assert.doesNotMatch(
+        label, /\.\./,
+        `${locale} ${snapshot.kind} label must carry one period, never two`,
+      );
+    }
+  }
+  const unavailable = todayA11yLabel({ kind: 'unavailable' }, DEFAULT_GOAL, 'en', getCopy('en'));
+  assert.match(unavailable, /connected\. Daily goal: 8,000 steps\.$/);
+  const loading = todayA11yLabel({ kind: 'loading' }, DEFAULT_GOAL, 'en', getCopy('en'));
+  assert.doesNotMatch(loading, /…\./, 'an ellipsis slot must not gain a period after it');
+});
+
 test('duck artwork is complete, palette-bound, and changes pose on goal reach', () => {
   for (const art of [DUCK_IDLE, DUCK_CHEER]) {
     assert.equal(art.length, DUCK_SIZE);
