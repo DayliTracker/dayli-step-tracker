@@ -72,6 +72,25 @@ test('row a11y label mirrors the three slots and never announces an absent total
   assert.doesNotMatch(viUnavailable, /\.\./, 'slot copy never doubles the sentence period');
 });
 
+test('a row slot ending in !, ? or … keeps its own terminator and gains no doubled one', () => {
+  const en = getCopy('en');
+  const bang = progressRowA11yLabel('Today!', { kind: 'unavailable' }, DEFAULT_GOAL, 'en', en);
+  assert.match(bang, /^Today! /, 'a slot ending in ! keeps its own terminator');
+  assert.doesNotMatch(bang, /!\./, 'no period is appended after a kept !');
+  assert.doesNotMatch(bang, /\.\./, 'slot copy never doubles the sentence period');
+
+  const vi = getCopy('vi');
+  const dots = progressRowA11yLabel('Hôm nay…', { kind: 'unavailable' }, DEFAULT_GOAL, 'vi', vi);
+  assert.match(dots, /^Hôm nay… /, 'a slot ending in … keeps its own terminator');
+  assert.doesNotMatch(dots, /…\./, 'no period is appended after a kept …');
+  assert.doesNotMatch(dots, /\.\./, 'slot copy never doubles the sentence period');
+
+  const query = progressRowA11yLabel('Thứ 4?', { kind: 'unavailable' }, DEFAULT_GOAL, 'vi', vi);
+  assert.match(query, /^Thứ 4\? /, 'a slot ending in ? keeps its own terminator');
+  assert.doesNotMatch(query, /\?\./, 'no period is appended after a kept ?');
+  assert.doesNotMatch(query, /\.\./, 'slot copy never doubles the sentence period');
+});
+
 test('manual-entry button stays outside the row a11y group so VoiceOver can focus it', () => {
   const mapStart = appSource.indexOf('dates.map(');
   assert.ok(mapStart >= 0, 'Progress maps the seven dates');

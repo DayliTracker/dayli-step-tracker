@@ -1,3 +1,4 @@
+import { sentenceSlot } from './a11y-text.ts';
 import type { Copy, Locale } from './localization';
 
 export const DEFAULT_GOAL = 8000;
@@ -65,27 +66,23 @@ export function goalReached(snapshot: TodaySnapshot, goal: number): boolean {
  * Single screen-reader description for the Today summary. Carries the exact
  * count, goal, uncapped ratio, goal-reached flag, and source, so the ring's
  * color and fill are never the only status cue. Slot copy often arrives with
- * its own trailing period (e.g. `stepsUnavailable`), so every slot is
- * normalized to exactly one sentence terminator before joining — never a
- * doubled period for screen readers.
+ * its own trailing period (e.g. `stepsUnavailable`), so every slot goes
+ * through the shared `sentenceSlot` normalizer before joining — exactly one
+ * sentence terminator each, never a doubled period for screen readers.
  */
 export function todayA11yLabel(
   snapshot: TodaySnapshot, goal: number, locale: Locale, copy: Copy,
 ): string {
   const goalLine = `${copy.goal}: ${formatNumber(goal, locale)} ${copy.steps}`;
-  const sentence = (slot: string) => {
-    const trimmed = slot.replace(/\.+$/u, '');
-    return /[!?…]$/u.test(trimmed) ? trimmed : `${trimmed}.`;
-  };
   switch (snapshot.kind) {
     case 'loading':
-      return `${sentence(copy.todayLoading)} ${sentence(goalLine)}`;
+      return `${sentenceSlot(copy.todayLoading)} ${sentenceSlot(goalLine)}`;
     case 'empty':
-      return `${sentence(copy.todayEmpty)} ${sentence(goalLine)}`;
+      return `${sentenceSlot(copy.todayEmpty)} ${sentenceSlot(goalLine)}`;
     case 'unavailable':
-      return `${sentence(copy.stepsUnavailable)} ${sentence(goalLine)}`;
+      return `${sentenceSlot(copy.stepsUnavailable)} ${sentenceSlot(goalLine)}`;
     case 'error':
-      return `${sentence(copy.todayError)} ${sentence(goalLine)}`;
+      return `${sentenceSlot(copy.todayError)} ${sentenceSlot(goalLine)}`;
     case 'loaded': {
       const source = snapshot.source === 'health' ? copy.sourceHealth : copy.sourceManual;
       return [
@@ -94,7 +91,7 @@ export function todayA11yLabel(
         `${formatRatio(progressRatio(snapshot.steps, goal), locale)} ${copy.ratioOfGoal}`,
         goalReached(snapshot, goal) ? copy.goalReached : '',
         `${copy.sourceLabel}: ${source}`,
-      ].filter(Boolean).map(sentence).join(' ');
+      ].filter(Boolean).map(sentenceSlot).join(' ');
     }
   }
 }
