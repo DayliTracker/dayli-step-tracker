@@ -119,13 +119,70 @@ test('mascot pack ships every frame and particle, and the registry mounts the du
   }
 });
 
-test('PixelPet engine exits celebrate when progress falls and resets the idle face on a mood change', () => {
-  // New-day reset: progress below 1 must leave celebrate (not only walk), or
-  // the pet celebrates forever — the upstream fix this vendored copy carries.
-  assert.match(engineSource, /mood === 'walk' \|\| mood === 'celebrate'/);
-  // A mood change firing mid-blink or mid-look must not leave idle holding
-  // the wrong face — the engine resets the idle frame on mood change.
-  assert.match(engineSource, /setIdleFrame\('idle'\)/);
+test('PixelPet mood machine: walk plays on a rise, celebrate at the goal, both exit when progress falls', () => {
+  // Extract the mood-machine effect (the first useEffect in the engine) and
+  // drive it through faithful React effect semantics: effects run on mount
+  // and re-run across renders when a listed dependency changes (Object.is),
+  // refs persist, and a setState to the value already held bails out without
+  // a re-render. Regression pin for review round 1 (R1): keying the machine
+  // on `mood` re-ran it one render after it entered walk, where no fresh rise
+  // was visible and the burst self-canceled straight back to idle.
+  const machine = engineSource.match(/useEffect\(\(\) => \{([\s\S]*?)\}, \[([^\]]*)\]\);/);
+  assert.ok(machine, 'the mood machine must be the first useEffect in PixelPet.tsx');
+  const deps = machine[2].split(',').map((d) => d.trim()).filter(Boolean);
+  assert.deepEqual(deps, ['progress'],
+    'mood decisions come from progress transitions only; a mood dependency re-runs the machine and self-cancels walk');
+  const drive = (script) => {
+    let mood = script.start >= 1 ? 'celebrate' : 'idle'; // the useState initializer
+    let progress = script.start;
+    const prevProgress = { current: progress };
+    const runEffect = () => {
+      let next = null;
+      new Function('progress', 'mood', 'setMood', 'prevProgress', machine[1])(
+        progress, mood, (m) => { next = m; }, prevProgress,
+      );
+      return next;
+    };
+    const settle = () => {
+      for (let i = 0; i < 20; i += 1) {
+        const next = runEffect();
+        if (next === null || next === mood) return mood;
+        mood = next;
+        if (!deps.includes('mood')) return mood; // mood is not a dependency: no re-run
+      }
+      throw new Error('mood machine never settles');
+    };
+    settle(); // mount pass: effects run once
+    const moods = [];
+    for (const step of script.then) {
+      if (step === progress) { moods.push(mood); continue; } // dep held: no re-run
+      progress = step;
+      moods.push(settle());
+    }
+    return moods;
+  };
+  assert.deepEqual(drive({ start: 0, then: [0.5] }), ['walk'],
+    'a rising progress must enter walk and hold it (R1: the burst self-canceled)');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 1] }), ['walk', 'celebrate'],
+    'progress reaching the goal celebrates');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 1, 0] }), ['walk', 'celebrate', 'idle'],
+    'a new-day reset must exit celebrate, or the pet celebrates forever');
+  assert.deepEqual(drive({ start: 0, then: [0.4, 0.2] }), ['walk', 'idle'],
+    'a falling progress exits walk too');
+  assert.deepEqual(drive({ start: 1, then: [0.5] }), ['idle'],
+    'a pet mounted at the goal exits celebrate when progress falls');
+  assert.deepEqual(drive({ start: 0, then: [0.5, 0.5] }), ['walk', 'walk'],
+    'held progress must not re-run the machine and must hold walk');
+});
+
+test('PixelPet walk bursts settle back to idle and a mood change resets the idle face', () => {
+  // The WALK_MS timer is the only exit from walk after a rise; the frame-timer
+  // cleanup resets the idle face so a mood change firing mid-blink or
+  // mid-look cannot leave idle holding the wrong face.
+  assert.match(engineSource, /setTimeout\(\(\) => setMood\('idle'\), WALK_MS\)/,
+    'walk must settle back to idle on its own timer');
+  assert.match(engineSource, /setIdleFrame\('idle'\)/,
+    'a mood change mid-blink or mid-look must not leave idle holding the wrong face');
 });
 
 test('the mascot slot reserves headroom for the poke heart, so no pet state covers the labels', () => {

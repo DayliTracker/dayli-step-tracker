@@ -65,18 +65,24 @@ export default function PixelPet({ frames, particles, progress, size = 170 }: Pi
 
   // --- mood state machine ----------------------------------------------------
 
+  // Mood decisions come from progress transitions only (rising, falling),
+  // never from the current mood — keying this effect on `mood` re-runs it one
+  // render after `setMood('walk')`, where no fresh rise is visible and the
+  // walk burst self-cancels (review round 1). A mood is only ever set from a
+  // progress reading that still holds, so a fall below 1 is the single exit
+  // path walk and celebrate need.
   useEffect(() => {
     if (progress >= 1) {
       setMood('celebrate');
     } else if (progress > prevProgress.current) {
       setMood('walk');
-    } else if (mood === 'walk' || mood === 'celebrate') {
-      // progress fell (or held) below 1 — e.g. a new day reset the goal;
-      // celebrate must exit or the pet celebrates forever
+    } else if (progress < prevProgress.current) {
+      // progress fell — e.g. a new day reset the goal; walk and celebrate
+      // must exit or the pet walks or celebrates forever
       setMood('idle');
     }
     prevProgress.current = progress;
-  }, [progress, mood]);
+  }, [progress]);
 
   // walk bursts settle back into idle
   useEffect(() => {
