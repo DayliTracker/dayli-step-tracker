@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { getCopy } from '../src/localization.ts';
 import {
   DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
   progressRatio, segmentAngle, todayA11yLabel,
 } from '../src/today.ts';
-import { DUCK_CHEER, DUCK_IDLE, DUCK_PALETTE, DUCK_SIZE } from '../src/duck.ts';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const engineSource = readFileSync(new URL('../components/PixelPet.tsx', import.meta.url), 'utf8');
+const registrySource = readFileSync(new URL('../components/pets.ts', import.meta.url), 'utf8');
 
 test('ring fills toward the goal and visually caps there without passing it', () => {
   assert.equal(litSegments(0, DEFAULT_GOAL), 0);
@@ -102,26 +103,43 @@ test('a11y label never doubles a period in any snapshot kind or locale', () => {
   assert.doesNotMatch(loading, /…\./, 'an ellipsis slot must not gain a period after it');
 });
 
-test('duck artwork is complete, palette-bound, and changes pose on goal reach', () => {
-  for (const art of [DUCK_IDLE, DUCK_CHEER]) {
-    assert.equal(art.length, DUCK_SIZE);
-    for (const row of art) {
-      assert.equal(row.length, DUCK_SIZE);
-      for (const pixel of row) {
-        assert.ok(pixel === '.' || pixel in DUCK_PALETTE, `unknown pixel '${pixel}'`);
-      }
-    }
+test('mascot pack ships every frame and particle, and the registry mounts the duck', () => {
+  for (const frame of [
+    'duck_idle', 'duck_blink', 'duck_look', 'duck_walk_a', 'duck_walk_b',
+    'duck_happy', 'duck_surprised', 'particle_heart', 'particle_star',
+  ]) {
+    assert.ok(
+      existsSync(new URL(`../assets/mascots/duck/${frame}.png`, import.meta.url)),
+      `${frame}.png must ship in the pack`,
+    );
   }
-  assert.notEqual(DUCK_IDLE.join(''), DUCK_CHEER.join(''));
+  assert.match(registrySource, /id: 'duck'/);
+  for (const frame of ['duck_idle', 'duck_surprised', 'particle_heart', 'particle_star']) {
+    assert.match(registrySource, new RegExp(`require\\('\\.\\./assets/mascots/duck/${frame}\\.png'\\)`));
+  }
 });
 
-test('Today wires every state, the ring fill, the source, and the character art', () => {
+test('PixelPet engine exits celebrate when progress falls and resets the idle face on a mood change', () => {
+  // New-day reset: progress below 1 must leave celebrate (not only walk), or
+  // the pet celebrates forever — the upstream fix this vendored copy carries.
+  assert.match(engineSource, /mood === 'walk' \|\| mood === 'celebrate'/);
+  // A mood change firing mid-blink or mid-look must not leave idle holding
+  // the wrong face — the engine resets the idle frame on mood change.
+  assert.match(engineSource, /setIdleFrame\('idle'\)/);
+});
+
+test('Today wires the animated pet: mood-driving progress, decorative slot, and the cheer text', () => {
   assert.match(appSource, /todayA11yLabel\(snapshot/);
   assert.match(appSource, /litSegments\(loaded\.steps, DEFAULT_GOAL\)/);
   assert.match(appSource, /copy\.sourceHealth/);
   assert.match(appSource, /copy\.sourceManual/);
   assert.match(appSource, /goalReached\(snapshot, DEFAULT_GOAL\)/);
-  assert.match(appSource, /cheer \? DUCK_CHEER : DUCK_IDLE/);
+  assert.match(appSource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
+  assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, DEFAULT_GOAL\), 1\)/,
+    'today progress is capped at 1 before it reaches the mood machine');
+  assert.match(appSource, /accessibilityElementsHidden/,
+    'the pet slot must hide itself and its poke control from VoiceOver');
+  assert.match(appSource, /copy\.goalReached/, 'the goal-reached cheer text stays in the flow');
   for (const kind of ['loading', 'empty', 'unavailable', 'error', 'loaded']) {
     assert.ok(appSource.includes(`'${kind}'`), `state ${kind} must appear in the Today presentation`);
   }
