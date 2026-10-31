@@ -32,3 +32,13 @@ A zombie worker of stopped run `dwfrun-8cdf7500` ran this same card in parallel 
 ## Local tests
 
 `npm test` → 37/37 pass (24 pre-existing + 6 contrast + 7 a11y-dump evidence tests) · `npm run typecheck` clean · `node scripts/qa-a11y-check.mjs` on all 17 dumps (43pt floor, 6 dumps fail at 44pt floor only on the header-action finding → bug #24).
+
+## Re-verification (2026-10-31, resumed QA session)
+
+The first QA worker committed the evidence set above but was interrupted before the PR/comment/card exit. This session re-verified every claim independently before the card moves on:
+
+- Rebuilt from this branch: `npx expo run:ios --configuration Debug -d "iPhone 17"` → Build Succeeded, installed + launched on iPhone 17 sim (402×874, iOS 27.0); iPhone 17e sim (390×844) reuse of the same build.
+- Re-ran `npm test` → 37/37 pass · `npm run typecheck` → clean · `node scripts/qa-a11y-check.mjs` on all 17 canonical dumps → exactly 6 fail at the 44pt floor, all the header action (bug #24).
+- Fresh interaction matrix in `recheck/` (17 screenshots + 17 `idb ui describe-all` dumps, real taps, both devices, en+vi, medium+AX5, both alerts): every state reproduces the canonical evidence — same layouts, same labels/roles/traits, same truthful placeholder strings. AX5 Settings dump is element-for-element identical to the canonical `a11y/12-settings-vi-ax5.json`. The checker on the fresh dumps fails the same 6 states, on the header action only.
+- Findings re-confirmed on-device: bug #24 (header action 43.33×52 in en + vi, 402pt + 390pt; scales past 44 at AX5 → 78×59) and bug #11 (`..` double period in the ring a11y label, en + vi). LogBox dev banner present again in debug builds; it overlaps the tab bar and intercepts taps until dismissed (dev tooling, not app UI).
+- No new findings.
