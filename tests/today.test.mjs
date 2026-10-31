@@ -128,6 +128,19 @@ test('PixelPet engine exits celebrate when progress falls and resets the idle fa
   assert.match(engineSource, /setIdleFrame\('idle'\)/);
 });
 
+test('the mascot slot reserves headroom for the poke heart, so no pet state covers the labels', () => {
+  // The engine lifts the poke heart at most 0.6 × size above the pet box
+  // (PixelPet.tsx), and the Today slot reserves exactly that much headroom
+  // above the pet (App.tsx). Pin both numbers: if either drifts, the heart
+  // or the celebrate sparkles would draw over the step total or source label.
+  assert.match(engineSource, /-size \* 0\.6/,
+    'engine poke heart must rise no further than 0.6 × size above the pet box');
+  assert.match(appSource, /PET_SLOT_HEADROOM = PET_SIZE \* 0\.6/,
+    'slot headroom must stay at 0.6 × PET_SIZE to cover the heart rise');
+  assert.match(appSource, /height: PET_SIZE \+ PET_SLOT_HEADROOM, justifyContent: 'flex-end'/,
+    'the pet sits at the slot bottom with the headroom free above it');
+});
+
 test('Today wires the animated pet: mood-driving progress, decorative slot, and the cheer text', () => {
   assert.match(appSource, /todayA11yLabel\(snapshot/);
   assert.match(appSource, /litSegments\(loaded\.steps, DEFAULT_GOAL\)/);
