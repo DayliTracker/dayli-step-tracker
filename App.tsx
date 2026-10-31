@@ -1,6 +1,11 @@
 import { useState, type ReactElement } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import {
+  Lexend_400Regular, Lexend_600SemiBold, Lexend_700Bold, Lexend_800ExtraBold,
+} from '@expo-google-fonts/lexend';
 import {
   createNavigationState, navigate, type NavigationAction, type NavigationState,
   type PrimaryTab, type SettingsDestination,
@@ -14,7 +19,7 @@ import {
   progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
 import { DUCK_CHEER, DUCK_IDLE, DUCK_PALETTE, DUCK_SIZE } from './src/duck';
-import { colors, radius, spacing, typeLeading, typeSize, typeWeight } from './src/tokens';
+import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
 const RING_SIZE = 190;
 const RING_RADIUS = 86;
@@ -26,6 +31,14 @@ const isPrimary = (screen: NavigationState['screen']) => screen === 'today' || s
 export default function App() {
   const [nav, setNav] = useState(createNavigationState);
   const [locale, setLocale] = useState<Locale>('en');
+  // Both families load at the root before the first paint: while they load,
+  // `null` holds the launch screen so no system-font frame flashes. On a load
+  // error the app still renders and the missing names fall back to the
+  // system font — the graceful path the visual system asks for.
+  const [fontsLoaded, fontsError] = useFonts({
+    Nunito_700Bold, Nunito_800ExtraBold,
+    Lexend_400Regular, Lexend_600SemiBold, Lexend_700Bold, Lexend_800ExtraBold,
+  });
   const copy = getCopy(locale);
   const send = (action: NavigationAction) => setNav((state) => navigate(state, action));
   const clearPreview = () => Alert.alert(copy.clearConfirmTitle, copy.clearConfirmMessage, [
@@ -40,6 +53,8 @@ export default function App() {
   } else {
     page = <DestinationPage destination={nav.screen} locale={locale} onNavigate={send} onLocale={setLocale} />;
   }
+
+  if (!fontsLoaded && !fontsError) return null;
 
   return (
     <SafeAreaView style={s.root}>
@@ -319,14 +334,15 @@ const s = StyleSheet.create({
     justifyContent: 'space-between', marginBottom: spacing.page },
   headerTitle: { flexShrink: 1, paddingRight: spacing.lg },
   eyebrow: { color: colors.textMuted, fontSize: typeSize.eyebrow, letterSpacing: 1,
-    fontWeight: typeWeight.bold },
-  title: { color: colors.text, fontSize: typeSize.title, fontWeight: typeWeight.heavy,
+    fontFamily: typeFace.display.bold },
+  title: { color: colors.text, fontSize: typeSize.title, fontFamily: typeFace.display.heavy,
     marginTop: spacing.xs },
   headerAction: { minHeight: 52, maxWidth: '48%', justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: spacing.xxl, borderRadius: radius.action, backgroundColor: colors.accent },
-  actionText: { color: colors.text, fontSize: typeSize.label, fontWeight: typeWeight.bold,
+  actionText: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
     textAlign: 'center' },
-  date: { color: colors.textMuted, fontSize: typeSize.body, marginBottom: spacing.xxl },
+  date: { color: colors.textMuted, fontSize: typeSize.body, fontFamily: typeFace.text.regular,
+    marginBottom: spacing.xxl },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
@@ -339,20 +355,21 @@ const s = StyleSheet.create({
   ringSegmentLit: { backgroundColor: colors.ringLit },
   ringCenter: { alignItems: 'center', maxWidth: 2 * (RING_RADIUS - RING_SEGMENT_HEIGHT - spacing.lg) },
   duck: { marginTop: spacing.section, alignSelf: 'center' },
-  cheer: { color: colors.accentText, fontSize: typeSize.small, fontWeight: typeWeight.bold,
+  cheer: { color: colors.accentText, fontSize: typeSize.small, fontFamily: typeFace.display.bold,
     marginTop: spacing.lg, textAlign: 'center' },
-  count: { color: colors.text, fontSize: typeSize.display, fontWeight: typeWeight.heavy },
-  steps: { color: colors.textMuted, fontSize: typeSize.small },
+  count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
+    fontVariant: typeVariant.tabularNums },
+  steps: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.regular },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
-    textAlign: 'center', marginTop: spacing.section },
+    fontFamily: typeFace.text.regular, textAlign: 'center', marginTop: spacing.section },
   divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
     marginVertical: spacing.section },
   muted: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
-    marginTop: spacing.md },
-  goal: { color: colors.text, fontSize: typeSize.heading, fontWeight: typeWeight.bold,
-    marginVertical: spacing.sm },
+    fontFamily: typeFace.text.regular, marginTop: spacing.md },
+  goal: { color: colors.text, fontSize: typeSize.heading, fontFamily: typeFace.text.bold,
+    fontVariant: typeVariant.tabularNums, marginVertical: spacing.sm },
   intro: { color: colors.textMuted, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
-    marginBottom: spacing.xxl },
+    fontFamily: typeFace.text.regular, marginBottom: spacing.xxl },
   progressRow: {
     minHeight: 84, padding: spacing.gutter, marginBottom: spacing.xl, borderRadius: radius.row,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
@@ -361,16 +378,16 @@ const s = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg,
     justifyContent: 'space-between', alignItems: 'center',
   },
-  rowTitle: { color: colors.text, fontSize: typeSize.body, fontWeight: typeWeight.bold,
+  rowTitle: { color: colors.text, fontSize: typeSize.body, fontFamily: typeFace.text.bold,
     flexShrink: 1 },
-  rowValue: { color: colors.text, fontSize: typeSize.label, fontWeight: typeWeight.bold },
+  rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold },
   manualAction: {
     minHeight: 48, marginTop: spacing.xl, paddingHorizontal: spacing.gutter, alignSelf: 'stretch',
     alignItems: 'center', justifyContent: 'center', borderRadius: radius.control, borderWidth: 1,
     borderColor: colors.borderSoft, backgroundColor: colors.accentSoft,
   },
   manualActionText: { color: colors.accentText, fontSize: typeSize.label,
-    fontWeight: typeWeight.bold, textAlign: 'center' },
+    fontFamily: typeFace.text.bold, textAlign: 'center' },
   list: { gap: spacing.xl, marginTop: spacing.gutter, alignSelf: 'stretch' },
   settingsRow: {
     minHeight: 70, flexDirection: 'row', alignItems: 'center', padding: spacing.gutter,
@@ -379,18 +396,18 @@ const s = StyleSheet.create({
   },
   rowCopy: { flex: 1, paddingRight: spacing.lg },
   rowSubtitle: { color: colors.textMuted, fontSize: typeSize.caption,
-    lineHeight: typeLeading.dense, marginTop: spacing.xs },
-  chevron: { color: colors.textMuted, fontSize: typeSize.title },
+    lineHeight: typeLeading.dense, fontFamily: typeFace.text.regular, marginTop: spacing.xs },
+  chevron: { color: colors.textMuted, fontSize: typeSize.title, fontFamily: typeFace.text.regular },
   danger: { color: colors.danger },
   disclosure: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
-    marginTop: spacing.section },
+    fontFamily: typeFace.text.regular, marginTop: spacing.section },
   languageRow: {
     minHeight: 54, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.gutter, borderRadius: radius.control, borderWidth: 1,
     borderColor: colors.borderSoft,
   },
   languageSelected: { backgroundColor: colors.selection, borderColor: colors.ringLit },
-  selected: { color: colors.accentText, fontSize: typeSize.caption, fontWeight: typeWeight.bold },
+  selected: { color: colors.accentText, fontSize: typeSize.caption, fontFamily: typeFace.text.bold },
   tabs: {
     flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl, borderTopWidth: 1,
     borderColor: colors.border, backgroundColor: colors.card,
@@ -398,6 +415,6 @@ const s = StyleSheet.create({
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
     borderRadius: radius.tab },
   tabSelected: { backgroundColor: colors.accent },
-  tabText: { color: colors.textMuted, fontSize: typeSize.small, fontWeight: typeWeight.semibold },
-  tabTextSelected: { color: colors.text, fontWeight: typeWeight.heavy },
+  tabText: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.semibold },
+  tabTextSelected: { color: colors.text, fontFamily: typeFace.text.heavy },
 });

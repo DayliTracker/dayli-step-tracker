@@ -69,12 +69,26 @@ export const typeSize = {
   display: 40,
 } as const;
 
-/** Font weights used across the shell. */
-export const typeWeight = {
-  semibold: '600',
-  bold: '700',
-  heavy: '800',
+/**
+ * Type faces as the loaded Google-font files register them — one name per
+ * weight file, because a weight lookup against a bare family name is
+ * unreliable for statically loaded fonts. Nunito carries the display
+ * headings (eyebrow, title, cheer); Lexend carries body, labels, and
+ * numerals (docs/phase-01-ux-design.md, "Typography"). App.tsx passes the
+ * same constants to useFonts, so a name here is a name that loads.
+ */
+export const typeFace = {
+  display: { bold: 'Nunito_700Bold', heavy: 'Nunito_800ExtraBold' },
+  text: {
+    regular: 'Lexend_400Regular',
+    semibold: 'Lexend_600SemiBold',
+    bold: 'Lexend_700Bold',
+    heavy: 'Lexend_800ExtraBold',
+  },
 } as const;
+
+/** Numerals render with tabular figures so a ticking step count holds still. */
+export const typeVariant = { tabularNums: ['tabular-nums'] } as const;
 
 /** Line heights (pt) paired with the body and caption sizes. */
 export const typeLeading = {

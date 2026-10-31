@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { colors, radius, spacing, typeLeading, typeSize, typeWeight } from '../src/tokens.ts';
+import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from '../src/tokens.ts';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
@@ -24,11 +24,20 @@ test('tokens pin the approved radius, spacing, and type scales exactly', () => {
     eyebrow: 11, caption: 13, label: 14, small: 15, body: 16,
     heading: 22, title: 27, display: 40,
   });
-  assert.deepEqual(typeWeight, { semibold: '600', bold: '700', heavy: '800' });
+  assert.deepEqual(typeFace, {
+    display: { bold: 'Nunito_700Bold', heavy: 'Nunito_800ExtraBold' },
+    text: {
+      regular: 'Lexend_400Regular', semibold: 'Lexend_600SemiBold',
+      bold: 'Lexend_700Bold', heavy: 'Lexend_800ExtraBold',
+    },
+  });
+  assert.deepEqual(typeVariant, { tabularNums: ['tabular-nums'] });
   assert.deepEqual(typeLeading, { dense: 19, body: 20, relaxed: 24 });
 });
 
-test('the App style sheet keeps no literal hex colors or bare radius numbers', () => {
+test('the App style sheet keeps no literal hex colors, radii, or font families', () => {
   assert.doesNotMatch(appSource, /#[0-9a-fA-F]{6}\b/, 'colors must come from src/tokens');
   assert.doesNotMatch(appSource, /borderRadius:\s*\d/, 'radii must come from src/tokens');
+  assert.doesNotMatch(appSource, /fontFamily:\s*['"]/, 'font families must come from src/tokens');
+  assert.doesNotMatch(appSource, /fontVariant:\s*['"]/, 'font variants must come from src/tokens');
 });
