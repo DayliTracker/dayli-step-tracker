@@ -1,6 +1,8 @@
-import { useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { getLocales } from 'expo-localization';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import {
@@ -10,7 +12,10 @@ import {
   createNavigationState, navigate, type NavigationAction, type NavigationState,
   type PrimaryTab, type SettingsDestination,
 } from './src/navigation';
-import { getCopy, type Locale } from './src/localization';
+import {
+  getCopy, resolveDeviceLocale, resolveInitialLocale, type Locale,
+} from './src/localization';
+import { loadPreferences, savePreferences, type Preferences } from './src/preferences';
 import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
 } from './src/progress';
@@ -36,9 +41,19 @@ const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
 const pet = PETS[0];
 const isPrimary = (screen: NavigationState['screen']) => screen === 'today' || screen === 'progress';
 
+/**
+ * Language preferences after launch. `deviceLocale` is resolved once per
+ * session (iOS fixes locales for the session); `prefs` is null only when the
+ * stored preferences could not be read — the reason is surfaced to the
+ * language page, never swallowed into a success-shaped fallback.
+ */
+type PrefsState =
+  | { kind: 'loading' }
+  | { kind: 'ready'; deviceLocale: Locale; prefs: Preferences | null; error: string | null };
+
 export default function App() {
   const [nav, setNav] = useState(createNavigationState);
-  const [locale, setLocale] = useState<Locale>('en');
+  const [prefs, setPrefs] = useState<PrefsState>({ kind: 'loading' });
   // Both families load at the root before the first paint: while they load,
   // `null` holds the launch screen so no system-font frame flashes. On a load
   // error the app still renders and the missing names fall back to the
@@ -47,8 +62,40 @@ export default function App() {
     Nunito_700Bold, Nunito_800ExtraBold,
     Lexend_400Regular, Lexend_600SemiBold, Lexend_700Bold, Lexend_800ExtraBold,
   });
-  const copy = getCopy(locale);
+  // Launch resolves the language before the first paint: device locale, then
+  // the saved override on top, so a relaunch never flashes the wrong language.
+  useEffect(() => {
+    let alive = true;
+    const deviceLocale = resolveDeviceLocale(
+      getLocales().map((entry) => entry.languageTag),
+    );
+    void loadPreferences(AsyncStorage).then((result) => {
+      if (!alive) return;
+      setPrefs(result.kind === 'ok'
+        ? { kind: 'ready', deviceLocale, prefs: result.value, error: null }
+        : { kind: 'ready', deviceLocale, prefs: null, error: result.reason });
+    });
+    return () => { alive = false; };
+  }, []);
+  const locale: Locale = prefs.kind === 'ready'
+    ? resolveInitialLocale(prefs.deviceLocale, prefs.prefs?.languageOverride ?? null)
+    : 'en'; // held behind the launch gate below, so this value never paints
+  const languageOverride: Locale | null =
+    prefs.kind === 'ready' ? prefs.prefs?.languageOverride ?? null : null;
+  // A saved override persists immediately; clearing it returns to the
+  // device-derived language at once and on the next launch. A failed write
+  // keeps the previous selection and surfaces the reason — never a fake save.
+  const applyLanguage = (override: Locale | null) => {
+    void savePreferences(AsyncStorage, { languageOverride: override }).then((result) => {
+      setPrefs((state) => {
+        if (state.kind !== 'ready') return state;
+        if (result.kind === 'error') return { ...state, error: result.reason };
+        return { kind: 'ready', deviceLocale: state.deviceLocale, prefs: result.value, error: null };
+      });
+    });
+  };
   const send = (action: NavigationAction) => setNav((state) => navigate(state, action));
+  const copy = getCopy(locale);
   const clearPreview = () => Alert.alert(copy.clearConfirmTitle, copy.clearConfirmMessage, [
     { text: copy.cancel, style: 'cancel' }, { text: copy.gotIt },
   ]);
@@ -59,9 +106,17 @@ export default function App() {
   } else if (nav.screen === 'settings') {
     page = <SettingsPage nav={nav} locale={locale} onNavigate={send} onClear={clearPreview} />;
   } else {
-    page = <DestinationPage destination={nav.screen} locale={locale} onNavigate={send} onLocale={setLocale} />;
+    page = (
+      <DestinationPage destination={nav.screen} locale={locale} onNavigate={send}
+        languageOverride={languageOverride}
+        storageError={prefs.kind === 'ready' ? prefs.error : null}
+        onLanguage={applyLanguage} />
+    );
   }
 
+  // The launch gate: fonts and preferences both resolve before the first
+  // paint, so the UI never renders in a language about to change.
+  if (prefs.kind !== 'ready') return null;
   if (!fontsLoaded && !fontsError) return null;
 
   return (
@@ -273,13 +328,14 @@ function SettingsPage({ nav, locale, onNavigate, onClear }: {
   );
 }
 
-function DestinationPage({ destination, locale, onNavigate, onLocale }: {
+function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage }: {
   destination: SettingsDestination; locale: Locale; onNavigate: (action: NavigationAction) => void;
-  onLocale: (locale: Locale) => void;
+  languageOverride: Locale | null; storageError: string | null;
+  onLanguage: (override: Locale | null) => void;
 }) {
   const copy = getCopy(locale);
   const title = { goal: copy.goalTitle, language: copy.languageTitle, health: copy.healthTitle }[destination];
-  const detail = { goal: copy.goalLater, language: copy.languageTemporary, health: copy.healthLater }[destination];
+  const detail = { goal: copy.goalLater, language: copy.languagePersisted, health: copy.healthLater }[destination];
   return (
     <ScrollView contentContainerStyle={s.content}>
       <Header title={title} action={copy.backToSettings} label={copy.backToSettings}
@@ -289,17 +345,24 @@ function DestinationPage({ destination, locale, onNavigate, onLocale }: {
         {destination === 'goal' && <Text style={s.goal}>{formatNumber(DEFAULT_GOAL, locale)} {copy.steps}</Text>}
         {destination === 'language' && (
           <View style={s.list}>
+            <Pressable accessibilityRole="radio" accessibilityLabel={copy.languageDevice}
+              accessibilityState={{ selected: languageOverride === null }} onPress={() => onLanguage(null)}
+              style={[s.languageRow, languageOverride === null && s.languageSelected]}>
+              <Text style={s.rowTitle}>{copy.languageDevice}</Text>
+              {languageOverride === null && <Text style={s.selected}>{copy.selected}</Text>}
+            </Pressable>
             {(['en', 'vi'] as const).map((value) => {
               const label = value === 'en' ? copy.english : copy.vietnamese;
               return (
                 <Pressable key={value} accessibilityRole="radio" accessibilityLabel={label}
-                  accessibilityState={{ selected: locale === value }} onPress={() => onLocale(value)}
-                  style={[s.languageRow, locale === value && s.languageSelected]}>
+                  accessibilityState={{ selected: languageOverride === value }} onPress={() => onLanguage(value)}
+                  style={[s.languageRow, languageOverride === value && s.languageSelected]}>
                   <Text style={s.rowTitle}>{label}</Text>
-                  {locale === value && <Text style={s.selected}>{copy.selected}</Text>}
+                  {languageOverride === value && <Text style={s.selected}>{copy.selected}</Text>}
                 </Pressable>
               );
             })}
+            {storageError && <Text style={s.languageError}>{copy.languageStorageError}</Text>}
           </View>
         )}
       </View>
@@ -411,6 +474,8 @@ const s = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   languageSelected: { backgroundColor: colors.selection, borderColor: colors.ringLit },
+  languageError: { color: colors.danger, fontSize: typeSize.caption, lineHeight: typeLeading.body,
+    fontFamily: typeFace.text.regular },
   selected: { color: colors.accentText, fontSize: typeSize.caption, fontFamily: typeFace.text.bold },
   tabs: {
     flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl, borderTopWidth: 1,
