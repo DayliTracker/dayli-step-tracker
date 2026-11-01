@@ -1,0 +1,539 @@
+[
+ {
+  "content_required": false,
+  "AXLabel": "Dayli Step Tracker",
+  "subrole": null,
+  "custom_actions": [],
+  "AXFrame": "{{0, 0}, {402, 874}}",
+  "role_description": "application",
+  "role": "AXApplication",
+  "type": "Application",
+  "help": null,
+  "AXUniqueId": null,
+  "traits": [
+   "None"
+  ],
+  "pid": 90057,
+  "frame": {
+   "x": 0,
+   "width": 402,
+   "height": 874,
+   "y": 0
+  },
+  "title": null,
+  "enabled": true,
+  "AXValue": null
+ },
+ {
+  "enabled": true,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "AXFrame": "{{20, 82.333333492279053}, {134.66667175292969, 15.333328247070312}}",
+  "pid": 90057,
+  "subrole": null,
+  "frame": {
+   "y": 82.33333349227905,
+   "width": 134.6666717529297,
+   "height": 15.333328247070312,
+   "x": 20
+  },
+  "role_description": "text",
+  "custom_actions": [],
+  "title": null,
+  "AXValue": null,
+  "help": null,
+  "AXLabel": "DAYLI STEP TRACKER",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "role": "AXStaticText"
+ },
+ {
+  "type": "Button",
+  "role_description": "button",
+  "AXLabel": "Open Settings",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXUniqueId": null,
+  "AXFrame": "{{338.66665649414062, 84}, {43.333343505859375, 52}}",
+  "content_required": false,
+  "title": null,
+  "role": "AXButton",
+  "help": null,
+  "subrole": null,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "enabled": true,
+  "frame": {
+   "width": 43.333343505859375,
+   "height": 52,
+   "y": 84,
+   "x": 338.6666564941406
+  },
+  "pid": 90057
+ },
+ {
+  "help": null,
+  "role": "AXStaticText",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "frame": {
+   "width": 134.6666717529297,
+   "x": 20,
+   "height": 37.00000762939453,
+   "y": 100.66666746139526
+  },
+  "enabled": true,
+  "title": null,
+  "AXValue": null,
+  "subrole": null,
+  "AXFrame": "{{20, 100.66666746139526}, {134.66667175292969, 37.000007629394531}}",
+  "custom_actions": [],
+  "role_description": "text",
+  "AXLabel": "Progress",
+  "pid": 90057,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ]
+ },
+ {
+  "frame": {
+   "width": 362,
+   "height": 24.333328247070312,
+   "x": 20,
+   "y": 164
+  },
+  "enabled": true,
+  "subrole": null,
+  "custom_actions": [],
+  "role_description": "text",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "content_required": false,
+  "role": "AXStaticText",
+  "AXUniqueId": null,
+  "AXValue": null,
+  "AXLabel": "Today and your previous six local days.",
+  "help": null,
+  "AXFrame": "{{20, 164}, {362, 24.333328247070312}}",
+  "title": null,
+  "pid": 90057,
+  "type": "StaticText"
+ },
+ {
+  "content_required": false,
+  "frame": {
+   "height": 71.00001525878906,
+   "width": 332,
+   "x": 35,
+   "y": 215.33333206176758
+  },
+  "AXFrame": "{{35, 215.33333206176758}, {332, 71.000015258789062}}",
+  "traits": [
+   "Scrollable"
+  ],
+  "AXUniqueId": null,
+  "subrole": null,
+  "title": null,
+  "enabled": true,
+  "role": "AXGenericElement",
+  "role_description": "",
+  "pid": 90057,
+  "type": "GenericElement",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXLabel": "Today. Your step total will appear when step data is connected. Daily goal: 5,500 steps. Step source is not available in this shell.",
+  "help": null
+ },
+ {
+  "AXUniqueId": null,
+  "role": "AXButton",
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Add manual total \u2014 Today",
+  "title": null,
+  "subrole": null,
+  "frame": {
+   "x": 35,
+   "y": 296.3333320617676,
+   "width": 332,
+   "height": 48
+  },
+  "AXValue": null,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "AXFrame": "{{35, 296.33333206176758}, {332, 48}}",
+  "pid": 90057,
+  "type": "Button",
+  "help": null,
+  "role_description": "button",
+  "content_required": false
+ },
+ {
+  "AXUniqueId": null,
+  "AXValue": null,
+  "role": "AXGenericElement",
+  "subrole": null,
+  "type": "GenericElement",
+  "role_description": "",
+  "help": null,
+  "content_required": false,
+  "pid": 90057,
+  "traits": [
+   "Scrollable"
+  ],
+  "title": null,
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Sat, Oct 31. Your step total will appear when step data is connected. Daily goal: 6,000 steps. Step source is not available in this shell.",
+  "AXFrame": "{{35, 384.33332824707031}, {332, 71}}",
+  "frame": {
+   "x": 35,
+   "width": 332,
+   "height": 71,
+   "y": 384.3333282470703
+  }
+ },
+ {
+  "pid": 90057,
+  "enabled": true,
+  "custom_actions": [],
+  "AXFrame": "{{35, 465.33332824707031}, {332, 47.999969482421875}}",
+  "subrole": null,
+  "AXUniqueId": null,
+  "frame": {
+   "width": 332,
+   "height": 47.999969482421875,
+   "y": 465.3333282470703,
+   "x": 35
+  },
+  "type": "Button",
+  "content_required": false,
+  "AXValue": null,
+  "title": null,
+  "help": null,
+  "role": "AXButton",
+  "role_description": "button",
+  "AXLabel": "Add manual total \u2014 Sat, Oct 31",
+  "traits": [
+   "Button",
+   "Scrollable"
+  ]
+ },
+ {
+  "help": null,
+  "content_required": false,
+  "type": "GenericElement",
+  "title": null,
+  "pid": 90057,
+  "role": "AXGenericElement",
+  "traits": [
+   "Scrollable"
+  ],
+  "AXUniqueId": null,
+  "AXFrame": "{{35, 553.33334350585938}, {332, 71}}",
+  "enabled": true,
+  "AXValue": null,
+  "role_description": "",
+  "AXLabel": "Fri, Oct 30. Your step total will appear when step data is connected. Daily goal: 6,000 steps. Step source is not available in this shell.",
+  "custom_actions": [],
+  "frame": {
+   "width": 332,
+   "height": 71,
+   "x": 35,
+   "y": 553.3333435058594
+  },
+  "subrole": null
+ },
+ {
+  "AXValue": null,
+  "content_required": false,
+  "enabled": true,
+  "AXFrame": "{{35, 634.33334350585938}, {332, 48}}",
+  "role": "AXButton",
+  "subrole": null,
+  "AXLabel": "Add manual total \u2014 Fri, Oct 30",
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "title": null,
+  "role_description": "button",
+  "help": null,
+  "frame": {
+   "width": 332,
+   "y": 634.3333435058594,
+   "x": 35,
+   "height": 48
+  },
+  "type": "Button",
+  "pid": 90057,
+  "custom_actions": [],
+  "AXUniqueId": null
+ },
+ {
+  "AXFrame": "{{35, 722.33331298828125}, {332, 71}}",
+  "help": null,
+  "pid": 90057,
+  "custom_actions": [],
+  "content_required": false,
+  "role_description": "",
+  "role": "AXGenericElement",
+  "AXUniqueId": null,
+  "enabled": true,
+  "frame": {
+   "width": 332,
+   "x": 35,
+   "y": 722.3333129882812,
+   "height": 71
+  },
+  "title": null,
+  "AXLabel": "Thu, Oct 29. Your step total will appear when step data is connected. Daily goal: 6,000 steps. Step source is not available in this shell.",
+  "traits": [
+   "Scrollable"
+  ],
+  "subrole": null,
+  "AXValue": null,
+  "type": "GenericElement"
+ },
+ {
+  "type": "Button",
+  "subrole": null,
+  "AXLabel": "Add manual total \u2014 Thu, Oct 29",
+  "enabled": true,
+  "content_required": false,
+  "title": null,
+  "help": null,
+  "pid": 90057,
+  "custom_actions": [],
+  "role_description": "button",
+  "role": "AXButton",
+  "AXFrame": "{{35, 803.33331298828125}, {332, 48}}",
+  "AXValue": null,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "AXUniqueId": null,
+  "frame": {
+   "y": 803.3333129882812,
+   "x": 35,
+   "height": 48,
+   "width": 332
+  }
+ },
+ {
+  "AXFrame": "{{35, 891.33331298828125}, {332, 71}}",
+  "traits": [
+   "Scrollable"
+  ],
+  "role": "AXGenericElement",
+  "custom_actions": [],
+  "title": null,
+  "content_required": false,
+  "enabled": true,
+  "frame": {
+   "x": 35,
+   "y": 891.3333129882812,
+   "height": 71,
+   "width": 332
+  },
+  "AXUniqueId": null,
+  "AXValue": null,
+  "AXLabel": "Wed, Oct 28. Your step total will appear when step data is connected. Daily goal: 6,000 steps. Step source is not available in this shell.",
+  "role_description": "",
+  "pid": 90057,
+  "subrole": null,
+  "type": "GenericElement",
+  "help": null
+ },
+ {
+  "custom_actions": [],
+  "frame": {
+   "height": 48,
+   "y": 972.3333129882812,
+   "x": 35,
+   "width": 332
+  },
+  "subrole": null,
+  "type": "Button",
+  "AXLabel": "Add manual total \u2014 Wed, Oct 28",
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "pid": 90057,
+  "role_description": "button",
+  "content_required": false,
+  "role": "AXButton",
+  "AXUniqueId": null,
+  "AXFrame": "{{35, 972.33331298828125}, {332, 48}}",
+  "enabled": true,
+  "help": null,
+  "AXValue": null,
+  "title": null
+ },
+ {
+  "role": "AXGenericElement",
+  "AXValue": null,
+  "AXUniqueId": null,
+  "custom_actions": [],
+  "title": null,
+  "enabled": true,
+  "type": "GenericElement",
+  "AXFrame": "{{35, 1060.3333129882812}, {332, 71}}",
+  "frame": {
+   "height": 71,
+   "x": 35,
+   "width": 332,
+   "y": 1060.3333129882812
+  },
+  "subrole": null,
+  "content_required": false,
+  "traits": [
+   "Scrollable"
+  ],
+  "help": null,
+  "role_description": "",
+  "AXLabel": "Tue, Oct 27. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.",
+  "pid": 90057
+ },
+ {
+  "subrole": null,
+  "AXFrame": "{{35, 1141.3333129882812}, {332, 48}}",
+  "custom_actions": [],
+  "title": null,
+  "content_required": false,
+  "enabled": true,
+  "help": null,
+  "AXValue": null,
+  "frame": {
+   "height": 48,
+   "x": 35,
+   "y": 1141.3333129882812,
+   "width": 332
+  },
+  "AXLabel": "Add manual total \u2014 Tue, Oct 27",
+  "pid": 90057,
+  "type": "Button",
+  "role_description": "button",
+  "AXUniqueId": null,
+  "role": "AXButton",
+  "traits": [
+   "Button",
+   "Scrollable"
+  ]
+ },
+ {
+  "custom_actions": [],
+  "subrole": null,
+  "content_required": false,
+  "title": null,
+  "traits": [
+   "Scrollable"
+  ],
+  "type": "GenericElement",
+  "AXLabel": "Mon, Oct 26. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.",
+  "role_description": "",
+  "AXFrame": "{{35, 1229.3333740234375}, {332, 71}}",
+  "frame": {
+   "height": 71,
+   "y": 1229.3333740234375,
+   "x": 35,
+   "width": 332
+  },
+  "AXValue": null,
+  "help": null,
+  "enabled": true,
+  "role": "AXGenericElement",
+  "pid": 90057,
+  "AXUniqueId": null
+ },
+ {
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "role": "AXButton",
+  "type": "Button",
+  "AXFrame": "{{35, 1310.3333740234375}, {332, 48}}",
+  "subrole": null,
+  "custom_actions": [],
+  "AXUniqueId": null,
+  "frame": {
+   "x": 35,
+   "y": 1310.3333740234375,
+   "width": 332,
+   "height": 48
+  },
+  "AXValue": null,
+  "help": null,
+  "pid": 90057,
+  "enabled": true,
+  "title": null,
+  "AXLabel": "Add manual total \u2014 Mon, Oct 26",
+  "role_description": "button",
+  "content_required": false
+ },
+ {
+  "custom_actions": [],
+  "title": null,
+  "enabled": true,
+  "content_required": false,
+  "AXFrame": "{{12, 780}, {184, 48}}",
+  "help": null,
+  "type": "GenericElement",
+  "role": "AXGenericElement",
+  "pid": 90057,
+  "AXLabel": "Today",
+  "subrole": null,
+  "AXUniqueId": null,
+  "frame": {
+   "height": 48,
+   "y": 780,
+   "width": 184,
+   "x": 12
+  },
+  "traits": [
+   "Scrollable"
+  ],
+  "role_description": "",
+  "AXValue": null
+ },
+ {
+  "role_description": "",
+  "custom_actions": [],
+  "help": null,
+  "role": "AXGenericElement",
+  "title": null,
+  "type": "GenericElement",
+  "AXUniqueId": null,
+  "AXValue": null,
+  "subrole": null,
+  "content_required": false,
+  "pid": 90057,
+  "AXLabel": "Progress",
+  "AXFrame": "{{206, 780}, {184, 48}}",
+  "enabled": true,
+  "frame": {
+   "height": 48,
+   "width": 184,
+   "y": 780,
+   "x": 206
+  },
+  "traits": [
+   "Selected",
+   "Scrollable"
+  ]
+ }
+]

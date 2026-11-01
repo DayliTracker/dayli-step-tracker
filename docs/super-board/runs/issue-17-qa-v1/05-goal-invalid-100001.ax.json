@@ -1,0 +1,236 @@
+[
+ {
+  "content_required": false,
+  "AXLabel": "Dayli Step Tracker",
+  "subrole": null,
+  "custom_actions": [],
+  "AXFrame": "{{0, 0}, {402, 874}}",
+  "role_description": "application",
+  "role": "AXApplication",
+  "type": "Application",
+  "help": null,
+  "AXUniqueId": null,
+  "traits": [
+   "None"
+  ],
+  "pid": 86855,
+  "frame": {
+   "x": 0,
+   "width": 402,
+   "height": 874,
+   "y": 0
+  },
+  "title": null,
+  "enabled": true,
+  "AXValue": null
+ },
+ {
+  "enabled": true,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "AXFrame": "{{20, 82.333333492279053}, {193, 15.333328247070312}}",
+  "pid": 86855,
+  "subrole": null,
+  "frame": {
+   "y": 82.33333349227905,
+   "width": 193,
+   "height": 15.333328247070312,
+   "x": 20
+  },
+  "role_description": "text",
+  "custom_actions": [],
+  "title": null,
+  "AXValue": null,
+  "help": null,
+  "AXLabel": "DAYLI STEP TRACKER",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "role": "AXStaticText"
+ },
+ {
+  "type": "Button",
+  "role_description": "button",
+  "AXLabel": "Back to Settings",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXUniqueId": null,
+  "AXFrame": "{{241.33332824707031, 84}, {140.66667175292969, 52}}",
+  "content_required": false,
+  "title": null,
+  "role": "AXButton",
+  "help": null,
+  "subrole": null,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "enabled": true,
+  "frame": {
+   "width": 140.6666717529297,
+   "height": 52,
+   "y": 84,
+   "x": 241.3333282470703
+  },
+  "pid": 86855
+ },
+ {
+  "help": null,
+  "role": "AXStaticText",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "frame": {
+   "width": 193,
+   "x": 20,
+   "height": 37.00000762939453,
+   "y": 100.66666746139526
+  },
+  "enabled": true,
+  "title": null,
+  "AXValue": null,
+  "subrole": null,
+  "AXFrame": "{{20, 100.66666746139526}, {193, 37.000007629394531}}",
+  "custom_actions": [],
+  "role_description": "text",
+  "AXLabel": "Daily step goal",
+  "pid": 86855,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ]
+ },
+ {
+  "frame": {
+   "width": 320,
+   "height": 27.666671752929688,
+   "x": 41,
+   "y": 207
+  },
+  "enabled": true,
+  "subrole": null,
+  "custom_actions": [],
+  "role_description": "text",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "content_required": false,
+  "role": "AXStaticText",
+  "AXUniqueId": null,
+  "AXValue": null,
+  "AXLabel": "1 steps",
+  "help": null,
+  "AXFrame": "{{41, 207}, {320, 27.666671752929688}}",
+  "title": null,
+  "pid": 86855,
+  "type": "StaticText"
+ },
+ {
+  "content_required": false,
+  "frame": {
+   "height": 20.333328247070312,
+   "width": 320,
+   "x": 41,
+   "y": 243.66666793823242
+  },
+  "AXFrame": "{{41, 243.66666793823242}, {320, 20.333328247070312}}",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "AXUniqueId": null,
+  "subrole": null,
+  "title": null,
+  "enabled": true,
+  "role": "AXStaticText",
+  "role_description": "text",
+  "pid": 86855,
+  "type": "StaticText",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXLabel": "Steps per day",
+  "help": null
+ },
+ {
+  "AXUniqueId": null,
+  "role": "AXTextField",
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Steps per day",
+  "title": null,
+  "subrole": null,
+  "frame": {
+   "x": 42,
+   "y": 270,
+   "width": 318,
+   "height": 46
+  },
+  "AXValue": "100001",
+  "traits": [
+   "TextEntry",
+   "Scrollable",
+   "TextOperationsAvailable"
+  ],
+  "AXFrame": "{{42, 270}, {318, 46}}",
+  "pid": 86855,
+  "type": "TextField",
+  "help": null,
+  "role_description": "text field",
+  "content_required": false
+ },
+ {
+  "AXUniqueId": null,
+  "AXValue": null,
+  "role": "AXButton",
+  "subrole": null,
+  "type": "Button",
+  "role_description": "button",
+  "help": null,
+  "content_required": false,
+  "pid": 86855,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "title": null,
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Save goal",
+  "AXFrame": "{{41, 327}, {320, 48}}",
+  "frame": {
+   "x": 41,
+   "width": 320,
+   "height": 48,
+   "y": 327
+  }
+ },
+ {
+  "pid": 86855,
+  "enabled": true,
+  "custom_actions": [],
+  "AXFrame": "{{41, 375}, {320, 20.333343505859375}}",
+  "subrole": null,
+  "AXUniqueId": null,
+  "frame": {
+   "width": 320,
+   "height": 20.333343505859375,
+   "y": 375,
+   "x": 41
+  },
+  "type": "StaticText",
+  "content_required": false,
+  "AXValue": null,
+  "title": null,
+  "help": null,
+  "role": "AXStaticText",
+  "role_description": "text",
+  "AXLabel": "Enter a whole number from 1 to 100,000.",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ]
+ }
+]
