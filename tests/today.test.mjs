@@ -200,12 +200,14 @@ test('the mascot slot reserves headroom for the poke heart, so no pet state cove
 
 test('Today wires the animated pet: mood-driving progress, decorative slot, and the cheer text', () => {
   assert.match(appSource, /todayA11yLabel\(snapshot/);
-  assert.match(appSource, /litSegments\(loaded\.steps, DEFAULT_GOAL\)/);
+  // The saved per-date goal feeds every goal line (issue #17), so the wiring
+  // names the `goal` value, not the DEFAULT_GOAL constant.
+  assert.match(appSource, /litSegments\(loaded\.steps, goal\)/);
   assert.match(appSource, /copy\.sourceHealth/);
   assert.match(appSource, /copy\.sourceManual/);
-  assert.match(appSource, /goalReached\(snapshot, DEFAULT_GOAL\)/);
+  assert.match(appSource, /goalReached\(snapshot, goal\)/);
   assert.match(appSource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
-  assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, DEFAULT_GOAL\), 1\)/,
+  assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, goal\), 1\)/,
     'today progress is capped at 1 before it reaches the mood machine');
   assert.match(appSource, /accessibilityElementsHidden/,
     'the pet slot must hide itself and its poke control from VoiceOver');
