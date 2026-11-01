@@ -138,7 +138,8 @@ test('Progress wires the seven local dates, per-date manual affordance, and trut
   assert.match(appSource, /key=\{localDateKey\(date\)\}/);
   assert.match(
     appSource,
-    /progressRowA11yLabel\(\s*label, \{ kind: 'unavailable' \}, DEFAULT_GOAL, locale, copy,?\s*\)/,
+    /progressRowA11yLabel\(\s*label, \{ kind: 'unavailable' \}, rowGoal, locale, copy,?\s*\)/,
+    'each row announces its own per-date goal, not a constant',
   );
   assert.match(
     appSource,

@@ -1,0 +1,311 @@
+[
+ {
+  "content_required": false,
+  "AXLabel": "Dayli Step Tracker",
+  "subrole": null,
+  "custom_actions": [],
+  "AXFrame": "{{0, 0}, {402, 874}}",
+  "role_description": "application",
+  "role": "AXApplication",
+  "type": "Application",
+  "help": null,
+  "AXUniqueId": null,
+  "traits": [
+   "None"
+  ],
+  "pid": 90234,
+  "frame": {
+   "x": 0,
+   "width": 402,
+   "height": 874,
+   "y": 0
+  },
+  "title": null,
+  "enabled": true,
+  "AXValue": null
+ },
+ {
+  "enabled": true,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "AXFrame": "{{20, 82.333333492279053}, {134.66667175292969, 15.333328247070312}}",
+  "pid": 90234,
+  "subrole": null,
+  "frame": {
+   "x": 20,
+   "y": 82.33333349227905,
+   "width": 134.6666717529297,
+   "height": 15.333328247070312
+  },
+  "role_description": "text",
+  "custom_actions": [],
+  "title": null,
+  "AXValue": null,
+  "help": null,
+  "AXLabel": "DAYLI STEP TRACKER",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "role": "AXStaticText"
+ },
+ {
+  "type": "Button",
+  "role_description": "button",
+  "AXLabel": "Open Settings",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXUniqueId": null,
+  "AXFrame": "{{338.66665649414062, 84}, {43.333343505859375, 52}}",
+  "content_required": false,
+  "title": null,
+  "role": "AXButton",
+  "help": null,
+  "subrole": null,
+  "traits": [
+   "Button",
+   "Scrollable"
+  ],
+  "enabled": true,
+  "frame": {
+   "height": 52,
+   "width": 43.333343505859375,
+   "x": 338.6666564941406,
+   "y": 84
+  },
+  "pid": 90234
+ },
+ {
+  "help": null,
+  "role": "AXStaticText",
+  "type": "StaticText",
+  "AXUniqueId": null,
+  "content_required": false,
+  "frame": {
+   "width": 134.6666717529297,
+   "height": 37.00000762939453,
+   "x": 20,
+   "y": 100.66666746139526
+  },
+  "enabled": true,
+  "title": null,
+  "AXValue": null,
+  "subrole": null,
+  "AXFrame": "{{20, 100.66666746139526}, {134.66667175292969, 37.000007629394531}}",
+  "custom_actions": [],
+  "role_description": "text",
+  "AXLabel": "Today",
+  "pid": 90234,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ]
+ },
+ {
+  "frame": {
+   "width": 362,
+   "x": 20,
+   "height": 20.333328247070312,
+   "y": 164
+  },
+  "enabled": true,
+  "subrole": null,
+  "custom_actions": [],
+  "role_description": "text",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "content_required": false,
+  "role": "AXStaticText",
+  "AXUniqueId": null,
+  "AXValue": null,
+  "AXLabel": "Sunday, November 1",
+  "help": null,
+  "AXFrame": "{{20, 164}, {362, 20.333328247070312}}",
+  "title": null,
+  "pid": 90234,
+  "type": "StaticText"
+ },
+ {
+  "content_required": false,
+  "frame": {
+   "width": 190,
+   "height": 190.00001525878906,
+   "y": 217.33333206176758,
+   "x": 106
+  },
+  "AXFrame": "{{106, 217.33333206176758}, {190, 190.00001525878906}}",
+  "traits": [
+   "Scrollable"
+  ],
+  "AXUniqueId": null,
+  "subrole": null,
+  "title": null,
+  "enabled": true,
+  "role": "AXGenericElement",
+  "role_description": "",
+  "pid": 90234,
+  "type": "GenericElement",
+  "custom_actions": [],
+  "AXValue": null,
+  "AXLabel": "Your step total will appear when step data is connected. Daily goal: 100,000 steps.",
+  "help": null
+ },
+ {
+  "AXUniqueId": null,
+  "role": "AXStaticText",
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Your step total will appear when step data is connected.",
+  "title": null,
+  "subrole": null,
+  "frame": {
+   "y": 425.3333320617676,
+   "width": 320,
+   "height": 48.33331298828125,
+   "x": 41
+  },
+  "AXValue": null,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "AXFrame": "{{41, 425.33333206176758}, {320, 48.33331298828125}}",
+  "pid": 90234,
+  "type": "StaticText",
+  "help": null,
+  "role_description": "text",
+  "content_required": false
+ },
+ {
+  "AXUniqueId": null,
+  "AXValue": null,
+  "role": "AXStaticText",
+  "subrole": null,
+  "type": "StaticText",
+  "role_description": "text",
+  "help": null,
+  "content_required": false,
+  "pid": 90234,
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "title": null,
+  "enabled": true,
+  "custom_actions": [],
+  "AXLabel": "Daily goal",
+  "AXFrame": "{{169, 515.66667556762695}, {64, 20.33331298828125}}",
+  "frame": {
+   "x": 169,
+   "width": 64,
+   "height": 20.33331298828125,
+   "y": 515.666675567627
+  }
+ },
+ {
+  "pid": 90234,
+  "enabled": true,
+  "custom_actions": [],
+  "AXFrame": "{{122, 539.9999885559082}, {158, 27.66668701171875}}",
+  "subrole": null,
+  "AXUniqueId": null,
+  "frame": {
+   "height": 27.66668701171875,
+   "y": 539.9999885559082,
+   "width": 158,
+   "x": 122
+  },
+  "type": "StaticText",
+  "content_required": false,
+  "AXValue": null,
+  "title": null,
+  "help": null,
+  "role": "AXStaticText",
+  "role_description": "text",
+  "AXLabel": "100,000 steps",
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ]
+ },
+ {
+  "traits": [
+   "StaticText",
+   "Scrollable"
+  ],
+  "role": "AXStaticText",
+  "type": "StaticText",
+  "AXFrame": "{{76.333332061767578, 576.66667556762695}, {249, 20.33331298828125}}",
+  "subrole": null,
+  "custom_actions": [],
+  "AXUniqueId": null,
+  "frame": {
+   "x": 76.33333206176758,
+   "y": 576.666675567627,
+   "width": 249,
+   "height": 20.33331298828125
+  },
+  "AXValue": null,
+  "help": null,
+  "pid": 90234,
+  "enabled": true,
+  "title": null,
+  "AXLabel": "Step source is not available in this shell.",
+  "role_description": "text",
+  "content_required": false
+ },
+ {
+  "custom_actions": [],
+  "title": null,
+  "enabled": true,
+  "content_required": false,
+  "AXFrame": "{{12, 780}, {184, 48}}",
+  "help": null,
+  "type": "GenericElement",
+  "role": "AXGenericElement",
+  "pid": 90234,
+  "AXLabel": "Today",
+  "subrole": null,
+  "AXUniqueId": null,
+  "frame": {
+   "height": 48,
+   "y": 780,
+   "x": 12,
+   "width": 184
+  },
+  "traits": [
+   "Selected",
+   "Scrollable"
+  ],
+  "role_description": "",
+  "AXValue": null
+ },
+ {
+  "role_description": "",
+  "custom_actions": [],
+  "help": null,
+  "role": "AXGenericElement",
+  "title": null,
+  "type": "GenericElement",
+  "AXUniqueId": null,
+  "AXValue": null,
+  "subrole": null,
+  "content_required": false,
+  "pid": 90234,
+  "AXLabel": "Progress",
+  "AXFrame": "{{206, 780}, {184, 48}}",
+  "enabled": true,
+  "frame": {
+   "width": 184,
+   "height": 48,
+   "y": 780,
+   "x": 206
+  },
+  "traits": [
+   "Scrollable"
+  ]
+ }
+]

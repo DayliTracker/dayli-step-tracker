@@ -44,8 +44,9 @@ test('Settings lists all destinations and clear-data actions are preview-only', 
 test('interactive controls have accessible names and at least 48-point touch targets', () => {
   const pressables = Array.from(appSource.matchAll(/<Pressable\b([\s\S]*?)>/g), (match) => match[1]);
   // 5 shell controls (including the device-language row on the language page)
-  // + the per-date manual-entry control in the Progress rows.
-  assert.equal(pressables.length, 6);
+  // + the per-date manual-entry control in the Progress rows
+  // + the goal editor's save control.
+  assert.equal(pressables.length, 7);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
