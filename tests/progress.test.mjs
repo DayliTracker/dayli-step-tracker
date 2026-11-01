@@ -45,11 +45,11 @@ test('row a11y label mirrors the three slots and never announces an absent total
   );
   assert.match(unavailable, /^Today\. /);
   assert.match(unavailable, /Daily goal: 8,000 steps/);
-  assert.match(unavailable, /Step source is not available/);
+  assert.match(unavailable, /No step data for this date yet/);
   assert.match(unavailable, /step total will appear/);
   assert.doesNotMatch(unavailable, /\b0 steps\b/, 'an absent total is never a zero');
   assert.doesNotMatch(unavailable, /\.\./, 'slot copy never doubles the sentence period');
-  assert.match(unavailable, /this shell\.$/, 'the sentence ends with exactly one period');
+  assert.match(unavailable, /yet\.$/, 'the sentence ends with exactly one period');
 
   const loaded = { kind: 'loaded', steps: 12300, source: 'health' };
   const health = progressRowA11yLabel('Wed, Oct 28', loaded, DEFAULT_GOAL, 'en', en);
@@ -68,7 +68,7 @@ test('row a11y label mirrors the three slots and never announces an absent total
   const viUnavailable = progressRowA11yLabel(
     'Hôm nay', { kind: 'unavailable' }, DEFAULT_GOAL, 'vi', vi,
   );
-  assert.match(viUnavailable, /phiên bản này\.$/, 'the sentence ends with exactly one period');
+  assert.match(viUnavailable, /cho ngày này\.$/, 'the sentence ends with exactly one period');
   assert.doesNotMatch(viUnavailable, /\.\./, 'slot copy never doubles the sentence period');
 });
 
@@ -123,32 +123,43 @@ test('manual-entry button stays outside the row a11y group so VoiceOver can focu
   assert.match(block.slice(button, button + 240), /accessibilityLabel=/);
 });
 
-test('manual-entry copy exists, is distinct, and admits nothing was saved', () => {
+test('manual-entry copy exists in both locales and no preview language remains', () => {
   for (const locale of ['en', 'vi']) {
     const copy = getCopy(locale);
     assert.ok(copy.addManualTotal.trim());
-    assert.ok(copy.manualPreviewTitle.trim());
-    assert.match(copy.manualPreviewMessage, locale === 'en' ? /nothing was saved/i : /chưa có gì được lưu/i);
+    assert.ok(copy.editManualTotal.trim());
+    assert.ok(copy.manualTitle.trim());
+    assert.ok(copy.manualInputLabel.trim());
+    assert.match(copy.manualReplaces, locale === 'en' ? /until you remove it/i : /cho đến khi bạn xóa nó/i);
   }
   assert.notEqual(getCopy('en').addManualTotal, getCopy('vi').addManualTotal);
+  assert.notEqual(getCopy('en').manualTitle, getCopy('vi').manualTitle);
+  // The phase-1 preview strings are gone from every surface.
+  assert.ok(!Object.keys(getCopy('en')).some((key) => key.startsWith('manualPreview')));
+  assert.ok(!Object.values(getCopy('en')).some((value) => /nothing was saved/i.test(value)));
+  assert.ok(!Object.values(getCopy('vi')).some((value) => /chưa có gì được lưu/i.test(value)));
 });
 
 test('Progress wires the seven local dates, per-date manual affordance, and truthful slots', () => {
   assert.match(appSource, /lastSevenLocalDates\(new Date\(\)\)/);
-  assert.match(appSource, /key=\{localDateKey\(date\)\}/);
+  assert.match(appSource, /key=\{dateKey\}/);
   assert.match(
     appSource,
-    /progressRowA11yLabel\(\s*label, \{ kind: 'unavailable' \}, rowGoal, locale, copy,?\s*\)/,
-    'each row announces its own per-date goal, not a constant',
+    /progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)/,
+    'each row announces its own snapshot and per-date goal, not a constant',
   );
   assert.match(
     appSource,
-    /accessibilityLabel=\{`\$\{copy\.addManualTotal\} — \$\{label\}`\}/,
+    /accessibilityLabel=\{`\$\{total !== null \? copy\.editManualTotal : copy\.addManualTotal\} — \$\{label\}`\}/,
     'each date carries its own manual-entry control name',
   );
-  assert.match(appSource, /Alert\.alert\(\s*copy\.manualPreviewTitle, copy\.manualPreviewMessage/);
-  assert.match(appSource, />— \{copy\.steps\}</, 'an absent total renders the em-dash slot, not a number');
-  assert.match(appSource, /\{ kind: 'unavailable' \}/, 'rows pass truthful snapshots, not fabricated data');
+  assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/,
+    'a row with a manual total renders it as the Manual source');
+  assert.match(appSource, /\{ kind: 'unavailable' \}/,
+    'a row with no data passes the truthful unavailable snapshot');
+  assert.match(appSource, /`— \$\{copy\.steps\}`/, 'an absent total renders the em-dash slot, not a number');
+  assert.doesNotMatch(appSource, /manualPreview/, 'the preview alert is gone');
+  assert.match(appSource, /type: 'open-manual', dateKey/, 'the row control opens the manual editor');
 });
 
 test('rows wrap at narrow widths and the manual control keeps a 48-point target', () => {

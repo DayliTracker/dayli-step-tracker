@@ -15,11 +15,16 @@ import {
 import {
   getCopy, resolveDeviceLocale, resolveInitialLocale, type Locale,
 } from './src/localization';
-import { loadPreferences, savePreferences, type Preferences } from './src/preferences';
+import { loadPreferences, savePreferences, DEFAULT_PREFERENCES, type Preferences } from './src/preferences';
 import {
   goalForDate, loadGoalHistory, parseGoalInput, saveGoalHistory, setGoalForDate,
-  type GoalHistory,
+  DEFAULT_GOAL_HISTORY, type GoalHistory,
 } from './src/goals';
+import { clearLocalData } from './src/clear-data';
+import {
+  loadManualTotals, saveManualTotals, setManualTotal, removeManualTotal,
+  manualTotalForDate, parseManualTotalInput, DEFAULT_MANUAL_TOTALS, type ManualTotals,
+} from './src/manual-totals';
 import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
 } from './src/progress';
@@ -64,10 +69,21 @@ type GoalsState =
   | { kind: 'loading' }
   | { kind: 'ready'; history: GoalHistory | null; error: string | null };
 
+/**
+ * Manual totals after launch. `totals` is null only when the stored record
+ * could not be read — the reason is surfaced to the manual page and Today,
+ * never guessed from a fabricated record.
+ */
+type ManualState =
+  | { kind: 'loading' }
+  | { kind: 'ready'; totals: ManualTotals | null; error: string | null };
+
 export default function App() {
   const [nav, setNav] = useState(createNavigationState);
   const [prefs, setPrefs] = useState<PrefsState>({ kind: 'loading' });
   const [goals, setGoals] = useState<GoalsState>({ kind: 'loading' });
+  const [manual, setManual] = useState<ManualState>({ kind: 'loading' });
+  const [clearError, setClearError] = useState<string | null>(null);
   // Both families load at the root before the first paint: while they load,
   // `null` holds the launch screen so no system-font frame flashes. On a load
   // error the app still renders and the missing names fall back to the
@@ -86,7 +102,8 @@ export default function App() {
     void Promise.all([
       loadPreferences(AsyncStorage),
       loadGoalHistory(AsyncStorage),
-    ]).then(([prefsResult, goalsResult]) => {
+      loadManualTotals(AsyncStorage),
+    ]).then(([prefsResult, goalsResult, manualResult]) => {
       if (!alive) return;
       setPrefs(prefsResult.kind === 'ok'
         ? { kind: 'ready', deviceLocale, prefs: prefsResult.value, error: null }
@@ -94,6 +111,9 @@ export default function App() {
       setGoals(goalsResult.kind === 'ok'
         ? { kind: 'ready', history: goalsResult.value, error: null }
         : { kind: 'ready', history: null, error: goalsResult.reason });
+      setManual(manualResult.kind === 'ok'
+        ? { kind: 'ready', totals: manualResult.value, error: null }
+        : { kind: 'ready', totals: null, error: manualResult.reason });
     });
     return () => { alive = false; };
   }, []);
@@ -142,16 +162,67 @@ export default function App() {
       });
     });
   };
-  const clearPreview = () => Alert.alert(copy.clearConfirmTitle, copy.clearConfirmMessage, [
-    { text: copy.cancel, style: 'cancel' }, { text: copy.gotIt },
+  // Manual saves need the loaded record as their base: after a read failure
+  // the stored totals are unknown, so writing could destroy unseen dates —
+  // the manual page refuses instead. A failed write keeps the previous record
+  // and surfaces the reason — never a fake save. The store enforces the
+  // seven-date window and one total per date (replace, never add).
+  const applyManualTotal = (dateKey: string, value: number) => {
+    if (manual.kind !== 'ready' || manual.totals === null) return;
+    const next = setManualTotal(manual.totals, dateKey, value, new Date());
+    void saveManualTotals(AsyncStorage, next).then((result) => {
+      setManual((state) => {
+        if (state.kind !== 'ready') return state;
+        if (result.kind === 'error') return { ...state, error: result.reason };
+        return { kind: 'ready', totals: result.value, error: null };
+      });
+    });
+  };
+  const applyManualRemoval = (dateKey: string) => {
+    if (manual.kind !== 'ready' || manual.totals === null) return;
+    void saveManualTotals(AsyncStorage, removeManualTotal(manual.totals, dateKey))
+      .then((result) => {
+        setManual((state) => {
+          if (state.kind !== 'ready') return state;
+          if (result.kind === 'error') return { ...state, error: result.reason };
+          return { kind: 'ready', totals: result.value, error: null };
+        });
+      });
+  };
+  // Confirmed clear-data resets exactly the local documents — preferences,
+  // goal history, manual totals, cached summaries: the keys are removed, the
+  // in-memory state returns to the defaults, so the 8,000 goal and the
+  // device-derived language come back now and on the next launch. The reset
+  // never touches Health permissions.
+  const applyClearData = () => {
+    void clearLocalData(AsyncStorage).then((result) => {
+      if (result.kind === 'error') { setClearError(result.reason); return; }
+      setClearError(null);
+      setPrefs((state) => state.kind === 'ready'
+        ? { kind: 'ready', deviceLocale: state.deviceLocale, prefs: DEFAULT_PREFERENCES, error: null }
+        : state);
+      setGoals({ kind: 'ready', history: DEFAULT_GOAL_HISTORY, error: null });
+      setManual({ kind: 'ready', totals: DEFAULT_MANUAL_TOTALS, error: null });
+    });
+  };
+  // The destructive action sits behind an explicit confirm button (destructive
+  // styling), and the copy names what is removed and that Health permissions
+  // remain unchanged.
+  const confirmClear = () => Alert.alert(copy.clearConfirmTitle, copy.clearConfirmMessage, [
+    { text: copy.cancel, style: 'cancel' },
+    { text: copy.clearConfirm, style: 'destructive', onPress: applyClearData },
   ]);
   let page: ReactElement;
 
   if (nav.screen === 'today' || nav.screen === 'progress') {
-    page = <PrimaryPage screen={nav.screen} locale={locale} onNavigate={send} goalHistory={goalHistory} />;
+    page = <PrimaryPage screen={nav.screen} locale={locale} onNavigate={send}
+      goalHistory={goalHistory} manual={manual} />;
+  } else if (nav.screen === 'manual') {
+    page = <ManualPage nav={nav} locale={locale} onNavigate={send} manual={manual}
+      onApply={applyManualTotal} onRemove={applyManualRemoval} />;
   } else if (nav.screen === 'settings') {
-    page = <SettingsPage nav={nav} locale={locale} onNavigate={send} onClear={clearPreview}
-      goalSubtitle={goalSubtitle} />;
+    page = <SettingsPage nav={nav} locale={locale} onNavigate={send} onClear={confirmClear}
+      clearError={clearError} goalSubtitle={goalSubtitle} />;
   } else {
     page = (
       <DestinationPage destination={nav.screen} locale={locale} onNavigate={send}
@@ -193,9 +264,9 @@ function Header({ title, action, label, onPress }: {
   );
 }
 
-function PrimaryPage({ screen, locale, onNavigate, goalHistory }: {
+function PrimaryPage({ screen, locale, onNavigate, goalHistory, manual }: {
   screen: PrimaryTab; locale: Locale; onNavigate: (action: NavigationAction) => void;
-  goalHistory: GoalHistory | null;
+  goalHistory: GoalHistory | null; manual: ManualState;
 }) {
   const copy = getCopy(locale);
   const today = screen === 'today';
@@ -208,27 +279,36 @@ function PrimaryPage({ screen, locale, onNavigate, goalHistory }: {
       <Header title={title} action="⚙" label={copy.openSettings}
         onPress={() => onNavigate({ type: 'open-settings' })} />
       {today
-        ? <Today date={date} locale={locale}
+        ? <Today date={date} locale={locale} manual={manual}
             goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL} />
-        : <Progress locale={locale} goalHistory={goalHistory} />}
+        : <Progress locale={locale} goalHistory={goalHistory} manual={manual}
+            onNavigate={onNavigate} />}
     </ScrollView>
   );
 }
 
-function Today({ date, locale, goal }: { date: string; locale: Locale; goal: number }) {
+function Today({ date, locale, goal, manual }: {
+  date: string; locale: Locale; goal: number; manual: ManualState;
+}) {
   const copy = getCopy(locale);
-  // Phase 1 shell: no data owner exists yet, so the truthful snapshot is
-  // "unavailable". Phases 2-3 pass loading/empty/error/loaded snapshots
-  // through the same shape; every state below renders without fabricated data.
-  // The goal is the saved per-date value: ring fill, the goal-reached state,
-  // and every goal line key off it, so a Settings change shows up at once.
-  const [snapshot] = useState<TodaySnapshot>({ kind: 'unavailable' });
+  // Today renders from the local data owner: loading while the record reads,
+  // error when the read failed, the date's saved manual total when it has one
+  // (manual is the only source until phase 3 connects Health), and empty when
+  // it has none. Nothing is fabricated; the goal is the saved per-date value.
+  const todayKey = localDateKey(new Date());
+  const total = manual.kind === 'ready' && manual.totals !== null
+    ? manualTotalForDate(manual.totals, todayKey)
+    : null;
+  const snapshot: TodaySnapshot = manual.kind !== 'ready' ? { kind: 'loading' }
+    : manual.totals === null ? { kind: 'error' }
+    : total !== null ? { kind: 'loaded', steps: total, source: 'manual' }
+    : { kind: 'empty' };
   const loaded = snapshot.kind === 'loaded' ? snapshot : null;
   const reached = goalReached(snapshot, goal);
   // Progress drives the pet's mood machine: idle at rest, a walk burst on
   // rising steps, celebrate at the goal — and back to idle when a new day
-  // resets progress below 1. The truthful phase-1 snapshot has no steps, so
-  // the pet idles today; phase 3 feeds real snapshots through the same shape.
+  // resets progress below 1. A saved manual total gives real progress; a
+  // date with none idles the pet until data exists.
   const progress = loaded ? Math.min(progressRatio(loaded.steps, goal), 1) : 0;
   const summary = loaded
     ? `${formatRatio(progressRatio(loaded.steps, goal), locale)} ${copy.ratioOfGoal}`
@@ -300,46 +380,60 @@ function Ring({ lit }: { lit: number }) {
   );
 }
 
-function Progress({ locale, goalHistory }: { locale: Locale; goalHistory: GoalHistory | null }) {
+function Progress({ locale, goalHistory, manual, onNavigate }: {
+  locale: Locale; goalHistory: GoalHistory | null; manual: ManualState;
+  onNavigate: (action: NavigationAction) => void;
+}) {
   const copy = getCopy(locale);
   const dates = lastSevenLocalDates(new Date());
-  // Phase 1 shell: no data owner exists yet, so every row truthfully renders
-  // the "unavailable" snapshot — same shape Today uses. Phase 2 passes real
-  // per-day totals, goals, and manual entries through this same slot layout.
-  // Each row's goal is that date's own: a goal change never rewrites history.
-  const previewManualEntry = () => Alert.alert(
-    copy.manualPreviewTitle, copy.manualPreviewMessage, [{ text: copy.gotIt }],
-  );
+  // Each row renders from the local data owner: the date's saved manual total
+  // (the visible Manual source label) or the truthful no-data state — Health
+  // totals arrive in phase 3. Each row's goal is that date's own: a goal
+  // change never rewrites history. The row control opens the manual editor
+  // for that exact date.
   return (
     <View>
       <Text style={s.intro}>{copy.progressIntro}</Text>
       {dates.map((date, index) => {
         const label = index ? formatRowDate(date, locale) : copy.dateToday;
-        const rowGoal = goalHistory ? goalForDate(goalHistory, localDateKey(date)) : DEFAULT_GOAL;
+        const dateKey = localDateKey(date);
+        const rowGoal = goalHistory ? goalForDate(goalHistory, dateKey) : DEFAULT_GOAL;
+        const total = manual.kind === 'ready' && manual.totals !== null
+          ? manualTotalForDate(manual.totals, dateKey)
+          : null;
+        const snapshot: TodaySnapshot = total !== null
+          ? { kind: 'loaded', steps: total, source: 'manual' }
+          : { kind: 'unavailable' };
         const goal = `${formatNumber(rowGoal, locale)} ${copy.steps}`;
         return (
-          <View key={localDateKey(date)} style={s.progressRow}>
+          <View key={dateKey} style={s.progressRow}>
             {/* The `accessible` group wraps only the three slot lines. An
                 `accessible` container flattens every descendant into one
                 element on iOS, so a button inside it vanishes from the
                 VoiceOver tree; the manual-entry control stays a sibling. */}
             <View
               accessible
-              accessibilityLabel={progressRowA11yLabel(
-                label, { kind: 'unavailable' }, rowGoal, locale, copy,
-              )}
+              accessibilityLabel={progressRowA11yLabel(label, snapshot, rowGoal, locale, copy)}
             >
               <View style={s.rowTop}>
                 <Text style={s.rowTitle}>{label}</Text>
-                <Text style={s.rowValue} accessibilityElementsHidden>— {copy.steps}</Text>
+                <Text style={s.rowValue} accessibilityElementsHidden>
+                  {total !== null ? `${formatNumber(total, locale)} ${copy.steps}` : `— ${copy.steps}`}
+                </Text>
               </View>
               <Text style={s.muted}>{copy.goal}: {goal}</Text>
-              <Text style={s.muted}>{copy.sourceUnavailable}</Text>
+              <Text style={s.muted}>
+                {snapshot.kind === 'loaded'
+                  ? `${copy.sourceLabel}: ${copy.sourceManual}`
+                  : copy.sourceUnavailable}
+              </Text>
             </View>
             <Pressable accessibilityRole="button"
-              accessibilityLabel={`${copy.addManualTotal} — ${label}`}
-              onPress={previewManualEntry} style={s.manualAction}>
-              <Text style={s.manualActionText}>{copy.addManualTotal}</Text>
+              accessibilityLabel={`${total !== null ? copy.editManualTotal : copy.addManualTotal} — ${label}`}
+              onPress={() => onNavigate({ type: 'open-manual', dateKey })} style={s.manualAction}>
+              <Text style={s.manualActionText}>
+                {total !== null ? copy.editManualTotal : copy.addManualTotal}
+              </Text>
             </Pressable>
           </View>
         );
@@ -348,9 +442,9 @@ function Progress({ locale, goalHistory }: { locale: Locale; goalHistory: GoalHi
   );
 }
 
-function SettingsPage({ nav, locale, onNavigate, onClear, goalSubtitle }: {
+function SettingsPage({ nav, locale, onNavigate, onClear, clearError, goalSubtitle }: {
   nav: NavigationState; locale: Locale; onNavigate: (action: NavigationAction) => void;
-  onClear: () => void; goalSubtitle: string;
+  onClear: () => void; clearError: string | null; goalSubtitle: string;
 }) {
   const copy = getCopy(locale);
   const back = nav.settingsOrigin === 'today' ? copy.backToToday : copy.backToProgress;
@@ -381,6 +475,7 @@ function SettingsPage({ nav, locale, onNavigate, onClear, goalSubtitle }: {
           </Pressable>
         ))}
       </View>
+      {clearError && <Text style={s.languageError}>{copy.clearStorageError}</Text>}
       <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
     </ScrollView>
   );
@@ -477,6 +572,94 @@ function GoalEditor({ locale, currentGoal, canSave, storageError, onApply }: {
       {storageError && <Text style={s.languageError}>{copy.goalStorageError}</Text>}
       {saved && <Text style={s.goalSavedNote}>{copy.goalSaved}</Text>}
     </View>
+  );
+}
+
+/**
+ * The manual-total editor for one date: shows the date's saved total, takes a
+ * new whole-number value, and validates before anything saves. A save
+ * replaces the date's total; removal takes the date back to the available
+ * source. An invalid submission never reaches the record, and a refused save
+ * (no loaded record, storage failure) never fakes success — the confirmation
+ * note shows only after the stored record confirms the change.
+ */
+function ManualPage({ nav, locale, onNavigate, manual, onApply, onRemove }: {
+  nav: NavigationState; locale: Locale; onNavigate: (action: NavigationAction) => void;
+  manual: ManualState; onApply: (dateKey: string, value: number) => void;
+  onRemove: (dateKey: string) => void;
+}) {
+  const copy = getCopy(locale);
+  const dateKey = nav.manualDate;
+  // The editor is opened from a Progress row, so the date is one of the seven
+  // window dates; the label matches the row that opened it.
+  const dates = lastSevenLocalDates(new Date());
+  const windowIndex = dateKey === null
+    ? -1 : dates.findIndex((date) => localDateKey(date) === dateKey);
+  const label = windowIndex === 0 ? copy.dateToday
+    : windowIndex > 0 ? formatRowDate(dates[windowIndex], locale)
+    : dateKey ?? '';
+  const existing = manual.kind === 'ready' && manual.totals !== null && dateKey !== null
+    ? manualTotalForDate(manual.totals, dateKey)
+    : null;
+  const canSave = manual.kind === 'ready' && manual.totals !== null && dateKey !== null;
+  const storageError = manual.kind === 'ready' ? manual.error : null;
+  const [text, setText] = useState(() => existing === null ? '' : `${existing}`);
+  const [invalid, setInvalid] = useState(false);
+  const [savedValue, setSavedValue] = useState<number | null>(null);
+  const [removedAt, setRemovedAt] = useState(false);
+  const submit = () => {
+    if (!canSave) { setInvalid(false); setSavedValue(null); setRemovedAt(false); return; }
+    const result = parseManualTotalInput(text);
+    if (result.kind === 'error') { setInvalid(true); setSavedValue(null); setRemovedAt(false); return; }
+    setInvalid(false);
+    setRemovedAt(false);
+    setSavedValue(result.value);
+    onApply(dateKey!, result.value);
+  };
+  const remove = () => {
+    if (!canSave || existing === null) return;
+    setInvalid(false);
+    setSavedValue(null);
+    setRemovedAt(true);
+    onRemove(dateKey!);
+  };
+  const saved = savedValue !== null && savedValue === existing && storageError === null;
+  const removed = removedAt && existing === null && storageError === null;
+  return (
+    <ScrollView contentContainerStyle={s.content}>
+      <Header title={copy.manualTitle} action={copy.backToProgress} label={copy.backToProgress}
+        onPress={() => onNavigate({ type: 'back' })} />
+      <View style={s.card}>
+        <Text style={s.rowTitle}>{label}</Text>
+        {existing !== null && (
+          <Text style={s.goal}>{formatNumber(existing, locale)} {copy.steps}</Text>
+        )}
+        <Text style={s.summary}>{copy.manualReplaces}</Text>
+        <Text style={s.muted}>{copy.manualInputLabel}</Text>
+        <TextInput
+          style={s.goalInput}
+          value={text}
+          onChangeText={setText}
+          accessibilityLabel={copy.manualInputLabel}
+          placeholder="0"
+          keyboardType="number-pad"
+        />
+        <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
+          onPress={submit} style={s.goalSave}>
+          <Text style={s.goalSaveText}>{copy.manualSave}</Text>
+        </Pressable>
+        {existing !== null && (
+          <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
+            onPress={remove} style={s.manualRemove}>
+            <Text style={s.manualRemoveText}>{copy.manualRemove}</Text>
+          </Pressable>
+        )}
+        {invalid && <Text style={s.languageError}>{copy.manualInvalid}</Text>}
+        {storageError && <Text style={s.languageError}>{copy.manualStorageError}</Text>}
+        {saved && <Text style={s.goalSavedNote}>{copy.manualSaved}</Text>}
+        {removed && <Text style={s.goalSavedNote}>{copy.manualRemoved}</Text>}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -604,6 +787,13 @@ const s = StyleSheet.create({
     color: colors.accentText, fontSize: typeSize.caption, lineHeight: typeLeading.body,
     fontFamily: typeFace.text.bold, marginTop: spacing.md, textAlign: 'center',
   },
+  manualRemove: {
+    minHeight: 48, marginTop: spacing.md, paddingHorizontal: spacing.xxl,
+    alignItems: 'center', justifyContent: 'center', borderRadius: radius.action,
+    borderWidth: 1, borderColor: colors.danger,
+  },
+  manualRemoveText: { color: colors.danger, fontSize: typeSize.label,
+    fontFamily: typeFace.text.bold },
   tabs: {
     flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl, borderTopWidth: 1,
     borderColor: colors.border, backgroundColor: colors.card,

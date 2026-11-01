@@ -15,13 +15,16 @@ export interface Preferences {
 export const DEFAULT_PREFERENCES: Preferences = { languageOverride: null };
 
 /**
- * The async key-value backend preferences persist through. The app wires
+ * The async key-value backend local data persists through. The app wires
  * AsyncStorage into this shape; tests inject memory or failing stores, so
- * every rule below is provable without a device.
+ * every rule below is provable without a device. `removeItem` deletes one
+ * document — the clear-data reset uses it instead of writing over values, so
+ * a cleared key is genuinely gone and the next launch reads its defaults.
  */
 export interface StorageBackend {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
 }
 
 /**

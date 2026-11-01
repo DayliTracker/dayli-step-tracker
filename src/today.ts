@@ -7,8 +7,10 @@ export const RING_SEGMENTS = 48;
 export type StepSource = 'health' | 'manual';
 
 /**
- * Presentation snapshot for Today. Phase 1 has no data owner, so the shell
- * passes `unavailable`; Phases 2-3 pass real values through the same shape.
+ * Presentation snapshot for Today and the Progress rows. The local data owner
+ * derives `loading`/`empty`/`loaded` from stored data; `unavailable` marks a
+ * date with no data yet (Health totals arrive in phase 3) and `error` a read
+ * that failed — every state renders without fabricated data.
  */
 export type TodaySnapshot =
   | { kind: 'loading' }
