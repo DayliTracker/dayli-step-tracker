@@ -42,6 +42,7 @@ const english = {
   cancel: 'Cancel', gotIt: 'Got it', english: 'English', vietnamese: 'Tiếng Việt',
   selected: 'Selected', openSettings: 'Open Settings', backToSettings: 'Back to Settings',
   backToToday: 'Back to Today', backToProgress: 'Back to Progress',
+  petPoke: 'Poke the duck',
 };
 
 export type Copy = { [Key in keyof typeof english]: string };
@@ -91,6 +92,7 @@ const translations: Record<Locale, Copy> = {
     cancel: 'Hủy', gotIt: 'Đã hiểu', english: 'English', vietnamese: 'Tiếng Việt',
     selected: 'Đã chọn', openSettings: 'Mở Cài đặt', backToSettings: 'Quay lại Cài đặt',
     backToToday: 'Quay lại Hôm nay', backToProgress: 'Quay lại Tiến độ',
+    petPoke: 'Chạm vào vịt',
   },
 };
 
@@ -111,4 +113,91 @@ export function resolveDeviceLocale(languageTags: readonly string[]): Locale {
 /** The saved override wins; without one the device decides. */
 export function resolveInitialLocale(device: Locale, override: Locale | null): Locale {
   return override ?? device;
+}
+
+/**
+ * The mascot's voice (prototype/textless-shell v4): short lines the speech
+ * bubble speaks. The bubble is the duck talking, never UI copy — home stays
+ * textless otherwise. Pools are verbatim from the prototype's LINES so the
+ * approved wording ships unchanged; `lead` and `homecome` sit ready for
+ * issue #42's duck-led navigation to speak.
+ */
+export type BubbleCategory =
+  | 'cute' | 'nudge' | 'poke' | 'walk' | 'cheer' | 'dizzy' | 'stroll'
+  | 'lead' | 'homecome';
+
+const mascotVoice: Record<Locale, Record<BubbleCategory, readonly string[]>> = {
+  en: {
+    cute: ['quack. just quack.', 'nice to see you', 'you smell like steps',
+      'i napped so hard', 'daydreaming of bread'],
+    nudge: ['let’s walk a bit!', 'a tiny stroll?', 'my legs are ready',
+      'steps won’t count themselves', 'waddle with me?'],
+    poke: ['hey! that tickles', 'oi!', 'again! again!'],
+    walk: ['look at me gooo', 'waddle waddle', 'so speedy'],
+    cheer: ['WE DID IT!', 'goal smashed!', 'best human ever'],
+    dizzy: ['woaaah the room spins'],
+    stroll: ['walk walk walk'],
+    lead: ['this way!', 'follow me!', 'settings time!'],
+    homecome: ['home again!', 'missed this spot', 'back to business'],
+  },
+  vi: {
+    cute: ['quack. chỉ quack thôi.', 'thấy bạn vui quá', 'bạn thơm mùi bước chân',
+      'giấc ngủ ngon quá', 'mơ về bánh mì'],
+    nudge: ['đi bộ chút nhé!', 'đi dạo nhỏ thôi?', 'chân tui sẵn sàng',
+      'bước chân tự đi được đâu', 'đi với tui nào?'],
+    poke: ['nhi! ngứa đó', 'ơi!', 'làm nữa đi!'],
+    walk: ['nhìn tui đi nào', 'cộc cộc cộc', 'nhanh dữ thần'],
+    cheer: ['LÀM ĐƯỢC RỒI!', 'phá đảo mục tiêu!', 'bạn number one'],
+    dizzy: ['woaaah đầu quay quá'],
+    stroll: ['đi bộ đi bộ bộ'],
+    lead: ['đi hướng này!', 'theo tui!', 'đến cài đặt nào!'],
+    homecome: ['về nhà rồi!', 'thường chỗ này quá', 'làm việc thôi'],
+  },
+};
+
+/** Idle chatter draws from the cute and nudge pools, 50/50 like the prototype. */
+const IDLE_CATEGORIES = ['cute', 'nudge'] as const;
+export type IdleCategory = (typeof IDLE_CATEGORIES)[number];
+export type BubbleEventCategory = Exclude<BubbleCategory, IdleCategory>;
+
+/** FNV-1a over a string — seeds the day's deterministic first line. */
+function hashText(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+function pickFrom(pool: readonly string[], random: () => number): string {
+  return pool[Math.floor(random() * pool.length)];
+}
+
+/**
+ * The day's first idle line: the same local date always speaks the same line,
+ * with no persisted state — the date key alone picks it. Later lines are
+ * random (idleLine), so the duck never repeats a script.
+ */
+export function dateIdleLine(dateKey: string, locale: Locale): string {
+  const pool = [...mascotVoice[locale].cute, ...mascotVoice[locale].nudge];
+  return pool[hashText(dateKey) % pool.length];
+}
+
+/** A random idle line — cute or nudge, 50/50 like the prototype's chat(). */
+export function idleLine(locale: Locale, random: () => number = Math.random): string {
+  const category = IDLE_CATEGORIES[Math.floor(random() * IDLE_CATEGORIES.length)];
+  return pickFrom(mascotVoice[locale][category], random);
+}
+
+/** A random line for an event category (poke, walk, cheer, dizzy, stroll, …). */
+export function eventLine(
+  category: BubbleEventCategory, locale: Locale, random: () => number = Math.random,
+): string {
+  return pickFrom(mascotVoice[locale][category], random);
+}
+
+/** Every line in a category — the surface #42's lead/homecome greetings reuse. */
+export function bubbleLines(category: BubbleCategory, locale: Locale): readonly string[] {
+  return mascotVoice[locale][category];
 }

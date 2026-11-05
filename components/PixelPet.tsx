@@ -31,6 +31,9 @@ export type PixelPetParticles = {
 type FrameName = keyof PixelPetFrames;
 type Mood = 'idle' | 'walk' | 'celebrate';
 
+/** Mascot moments other surfaces can speak or react to (issue #29's bubble). */
+export type PixelPetEvent = 'poke' | 'walk' | 'celebrate';
+
 const WALK_MS = 2600;
 const POKE_MS = 550;
 
@@ -41,6 +44,12 @@ type PixelPetProps = {
   /** 0..1 goal progress. Rising → walk; ≥ 1 → celebrate; below 1 → idle. */
   progress: number;
   size?: number;
+  /** Name the tap target reads; the pet stays decorative wherever it mounts
+      (the home slot hides it), but the control itself is always labeled. */
+  accessibilityLabel?: string;
+  /** Fired on a poke and on entering walk or celebrate — the speech bubble's
+      event hook (issue #29); dizzy and stroll arrive with issue #43. */
+  onEvent?: (event: PixelPetEvent) => void;
 };
 
 /**
@@ -49,12 +58,19 @@ type PixelPetProps = {
  * surprised hop (plus heart) when poked. Poses change by frame swap; soft
  * motion (bob, tilt, squash) runs on native-driven transforms.
  */
-export default function PixelPet({ frames, particles, progress, size = 170 }: PixelPetProps) {
+export default function PixelPet({
+  frames, particles, progress, size = 170, accessibilityLabel, onEvent,
+}: PixelPetProps) {
   const [mood, setMood] = useState<Mood>(progress >= 1 ? 'celebrate' : 'idle');
   const [idleFrame, setIdleFrame] = useState<FrameName>('idle');
   const [walkFrame, setWalkFrame] = useState<'walkA' | 'walkB'>('walkA');
   const [poked, setPoked] = useState(false);
   const [heartKey, setHeartKey] = useState(0);
+
+  // The event hook reads through a ref so the mood effect below can key on
+  // `mood` alone — a new callback from the parent must not re-run it.
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   const prevProgress = useRef(progress);
   const bobY = useRef(new Animated.Value(0)).current;
@@ -83,6 +99,12 @@ export default function PixelPet({ frames, particles, progress, size = 170 }: Pi
     }
     prevProgress.current = progress;
   }, [progress]);
+
+  // Announce mood entries once per transition (walk, celebrate) — the bubble
+  // speaks its event line then; a held mood never re-fires.
+  useEffect(() => {
+    if (mood === 'walk' || mood === 'celebrate') onEventRef.current?.(mood);
+  }, [mood]);
 
   // walk bursts settle back into idle
   useEffect(() => {
@@ -251,6 +273,7 @@ export default function PixelPet({ frames, particles, progress, size = 170 }: Pi
   // --- poke --------------------------------------------------------------------
 
   const handlePoke = useCallback(() => {
+    onEventRef.current?.('poke');
     setPoked(true);
     setHeartKey((k) => k + 1);
     heart.setValue(0);
@@ -290,7 +313,12 @@ export default function PixelPet({ frames, particles, progress, size = 170 }: Pi
         : idleFrame;
 
   return (
-    <Pressable onPress={handlePoke} hitSlop={20}>
+    <Pressable
+      onPress={handlePoke}
+      hitSlop={20}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         {mood === 'celebrate' && <Sparkles size={size} star={particles.star} />}
         {heartKey > 0 && (

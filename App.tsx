@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
@@ -33,7 +33,8 @@ import {
   progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import PixelPet from './components/PixelPet';
+import PixelPet, { type PixelPetEvent } from './components/PixelPet';
+import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
@@ -331,6 +332,18 @@ function Today({ locale, goal, manual }: {
   // resets progress below 1. A saved manual total gives real progress; a
   // date with none idles the pet until data exists.
   const progress = loaded ? Math.min(progressRatio(loaded.steps, goal), 1) : 0;
+  // The duck's voice (issue #29): mascot events surface their bubble line
+  // through one hook; a bumped nonce replays even a repeated category. The
+  // bubble itself owns the idle chatter — the day's first line is picked from
+  // today's date, so it never needs persisted state. Dizzy and stroll speak
+  // the same way once #43 wires their moods; #42's lead/homecome reuse the
+  // same pools (src/localization.ts).
+  const [bubbleEvent, setBubbleEvent] = useState<BubbleEvent | null>(null);
+  const say = useCallback((event: PixelPetEvent) => {
+    // The engine says celebrate; the pool (prototype v4) says cheer.
+    const category = event === 'celebrate' ? 'cheer' : event;
+    setBubbleEvent((prev) => ({ category, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
   return (
     // The mascot is the home screen's center; the ring lives on the Progress
     // screen. This group stays the single screen-reader source: the exact
@@ -342,14 +355,18 @@ function Today({ locale, goal, manual }: {
     >
       {/* Decorative slot: hidden from the accessibility tree (both platforms)
           so the group label stays the screen-reader source. The slot's fixed
-          height reserves the poke heart's rise above the pet. */}
+          height reserves the poke heart's rise above the pet. The talk box
+          sits in that headroom too — the duck's voice, never UI copy, and it
+          never intercepts touches. */}
       <View
         accessible={false}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
         style={s.petSlot}
       >
-        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
+        <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent} />
+        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress}
+          size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} />
       </View>
       {/* The count and the footprints mark, nothing else. Not a control: the
           tap affordance routes to #44's stepper and stays inert until then. */}
