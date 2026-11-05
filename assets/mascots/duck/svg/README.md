@@ -42,7 +42,16 @@ source of truth; the prototype branch is provenance, not a build input.
 bash scripts/mascots/build-smooth-frames.sh
 ```
 
-macOS QuickLook rasterizer, pinned invocation documented in the script
-header. Renders every SVG here to a 480px RGBA PNG with the same filename
-the app requires (`components/pets.ts`), plus the contact sheet and the QA
-evidence copy under `docs/mascots/duck/qa/`.
+librsvg's `rsvg-convert`, version-pinned to **2.61.0** (this host:
+`/opt/homebrew/bin/rsvg-convert`), with the pinned invocation documented in
+the script header — `rsvg-convert -w 480 -h 480 <file>.svg -o <out>.png`.
+Renders every SVG here to a 480px RGBA PNG with the same filename the app
+requires (`components/pets.ts`), plus the contact sheet and the QA evidence
+copy under `docs/mascots/duck/qa/`.
+
+Rasterizer history: the script originally pinned macOS QuickLook
+(`qlmanage -t -s 480`), which flattened the background-less SVGs onto opaque
+white (every corner decoded `rgba(255,255,255,255)`) — re-pinned to librsvg
+in the PR #46 rebuild (review round 1, R1) because librsvg composites onto a
+transparent background by default, preserving the corner alpha the old pixel
+pack had. The corner-alpha contract is pinned by `tests/smooth-frames.test.mjs`.
