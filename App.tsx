@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import {
+  useCallback, useEffect, useRef, useState,
+  type ReactElement, type RefObject,
+} from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert, Animated, Easing, PanResponder, Pressable, SafeAreaView, ScrollView,
+  StyleSheet, Text, TextInput, View,
+} from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import {
   Lexend_400Regular, Lexend_600SemiBold, Lexend_700Bold, Lexend_800ExtraBold,
 } from '@expo-google-fonts/lexend';
 import {
   createNavigationState, navigate, type NavigationAction, type NavigationState,
-  type PrimaryTab, type SettingsDestination,
+  type SettingsDestination,
 } from './src/navigation';
 import {
   getCopy, resolveDeviceLocale, resolveInitialLocale, type Locale,
@@ -29,19 +35,14 @@ import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
 } from './src/progress';
 import {
-  DEFAULT_GOAL, RING_SEGMENTS, formatNumber, litSegments,
-  progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
+  DEFAULT_GOAL, formatNumber, progressRatio, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import PixelPet, { type PixelPetEvent } from './components/PixelPet';
+import PixelPet, { LEAD_MS, type PixelPetEvent, type PixelPetHandle } from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
-const RING_SIZE = 190;
-const RING_RADIUS = 86;
-const RING_SEGMENT_WIDTH = 5;
-const RING_SEGMENT_HEIGHT = 11;
 // The mascot slot: 200 keeps the supersampled frames a crisp downscale while
 // the duck holds the home screen's center, and the slot reserves the poke
 // heart's rise (the engine lifts it 0.6 × size above the pet box) so no
@@ -51,10 +52,12 @@ const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
 // The footprints mark beside the step count mirrors the prototype's 24px
 // 👣 (prototype/textless-shell v6 .steps-icon).
 const FOOTPRINT_SIZE = 24;
+// The screen slide (prototype v5 slideInRight/Left: ±70px, .3s ease-out + fade).
+const SLIDE_MS = 300;
+const SLIDE_OFFSET = 70;
 // The character slot takes the first registered pet; the registry grows as
 // /mascot lands new animals (components/pets.ts).
 const pet = PETS[0];
-const isPrimary = (screen: NavigationState['screen']) => screen === 'today' || screen === 'progress';
 
 /**
  * Language preferences after launch. `deviceLocale` is resolved once per
@@ -90,6 +93,16 @@ export default function App() {
   const [goals, setGoals] = useState<GoalsState>({ kind: 'loading' });
   const [manual, setManual] = useState<ManualState>({ kind: 'loading' });
   const [clearError, setClearError] = useState<string | null>(null);
+  // The shell's duck handle (issue #42): the swipe asks the duck to lead the
+  // way to Settings, and a return home asks it to waddle back in.
+  const petRef = useRef<PixelPetHandle | null>(null);
+  // The screen slide direction rides with each navigation (prototype v5):
+  // settings follows the duck in from the right, every return slides from
+  // the left, and opening a destination or the editor is instant.
+  const [enter, setEnter] = useState<'forward' | 'back' | null>(null);
+  // Returning home triggers the duck's arrival waddle (prototype v5 plays it
+  // 120ms after the screen settles); the nonce fires it once per return.
+  const [arriveNonce, setArriveNonce] = useState(0);
   // Both families load at the root before the first paint: while they load,
   // `null` holds the launch screen so no system-font frame flashes. On a load
   // error the app still renders and the missing names fall back to the
@@ -140,7 +153,30 @@ export default function App() {
       });
     });
   };
-  const send = (action: NavigationAction) => setNav((state) => navigate(state, action));
+  const send = (action: NavigationAction) => {
+    setEnter(action.type === 'open-settings' ? 'forward'
+      : action.type === 'back' ? 'back' : null);
+    if (action.type === 'back' && nav.screen === 'settings') {
+      setArriveNonce((n) => n + 1);
+    }
+    setNav((state) => navigate(state, action));
+  };
+  // Swipe left on home opens Settings through the duck-led exit (prototype
+  // v5): the duck dashes off the left edge when it can lead, and Settings
+  // follows it in. A busy duck never traps navigation — lead() refuses, and
+  // the screen changes at once. The same path serves the screen-reader
+  // action, so the swipe stays an extra affordance, never the only way.
+  const openSettingsFromHome = () => {
+    const led = petRef.current?.lead() ?? false;
+    setTimeout(() => send({ type: 'open-settings' }), led ? LEAD_MS + 30 : 0);
+  };
+  // The arrival waddle: 120ms after home settles (prototype v5's leadIn
+  // delay), the duck waddles back in from the left with its greeting.
+  useEffect(() => {
+    if (arriveNonce === 0) return;
+    const timer = setTimeout(() => petRef.current?.arrive(), 120);
+    return () => clearTimeout(timer);
+  }, [arriveNonce]);
   const copy = getCopy(locale);
   // Today's local date keys every goal read and write. The current goal is
   // today's recorded change, carried forward from the latest earlier change,
@@ -220,15 +256,21 @@ export default function App() {
   ]);
   let page: ReactElement;
 
-  if (nav.screen === 'today' || nav.screen === 'progress') {
-    page = <PrimaryPage screen={nav.screen} locale={locale} onNavigate={send}
-      goalHistory={goalHistory} manual={manual} />;
+  if (nav.screen === 'today') {
+    page = (
+      <ScrollView contentContainerStyle={s.hero}>
+        <Today locale={locale} manual={manual}
+          goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL}
+          onOpenSettings={openSettingsFromHome} petRef={petRef} />
+      </ScrollView>
+    );
   } else if (nav.screen === 'manual') {
     page = <ManualPage nav={nav} locale={locale} onNavigate={send} manual={manual}
       onApply={applyManualTotal} onRemove={applyManualRemoval} />;
   } else if (nav.screen === 'settings') {
-    page = <SettingsPage nav={nav} locale={locale} onNavigate={send} onClear={confirmClear}
-      clearError={clearError} goalSubtitle={goalSubtitle} />;
+    page = <SettingsPage locale={locale} onNavigate={send} onClear={confirmClear}
+      clearError={clearError} goalSubtitle={goalSubtitle}
+      goalHistory={goalHistory} manual={manual} />;
   } else {
     page = (
       <DestinationPage destination={nav.screen} locale={locale} onNavigate={send}
@@ -248,9 +290,37 @@ export default function App() {
   return (
     <SafeAreaView style={s.root}>
       <StatusBar style="dark" />
-      {page}
-      {isPrimary(nav.screen) && <Tabs current={nav.screen} locale={locale} onNavigate={send} />}
+      <ScreenEnter key={nav.screen} dir={enter}>{page}</ScreenEnter>
     </SafeAreaView>
+  );
+}
+
+/**
+ * The screen slide (prototype v5 slideInRight/slideInLeft): the new screen
+ * drifts in from the direction the duck led — 70px, 300ms ease-out, with a
+ * fade. Remounts per screen (keyed in App), so each navigation plays once.
+ */
+function ScreenEnter({ dir, children }: {
+  dir: 'forward' | 'back' | null; children: ReactElement;
+}) {
+  const offset = useRef(
+    new Animated.Value(dir === 'forward' ? SLIDE_OFFSET : dir === 'back' ? -SLIDE_OFFSET : 0),
+  ).current;
+  const opacity = useRef(new Animated.Value(dir === null ? 1 : 0)).current;
+  useEffect(() => {
+    if (dir === null) return;
+    Animated.parallel([
+      Animated.timing(offset, {
+        toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, { toValue: 1, duration: SLIDE_MS, useNativeDriver: true }),
+    ]).start();
+  }, [dir, offset, opacity]);
+  return (
+    <Animated.View style={[s.screen, { transform: [{ translateX: offset }], opacity }]}>
+      {children}
+    </Animated.View>
   );
 }
 
@@ -273,45 +343,19 @@ function Header({ title, icon, action, label, onPress }: {
   );
 }
 
-function PrimaryPage({ screen, locale, onNavigate, goalHistory, manual }: {
-  screen: PrimaryTab; locale: Locale; onNavigate: (action: NavigationAction) => void;
-  goalHistory: GoalHistory | null; manual: ManualState;
-}) {
-  const copy = getCopy(locale);
-  const today = screen === 'today';
-  return (
-    // Home is the textless hero (prototype/textless-shell): no header, no
-    // chrome — Settings opens from the Progress header gear until the swipe
-    // shell lands.
-    <ScrollView contentContainerStyle={today ? s.hero : s.content}>
-      {today
-        ? <Today locale={locale} manual={manual}
-            goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL} />
-        : <>
-          <Header title={copy.progressTitle} label={copy.openSettings}
-            icon={
-              <Ionicons
-                name="settings-outline" size={typeSize.heading} color={colors.text}
-              />
-            }
-            onPress={() => onNavigate({ type: 'open-settings' })} />
-          <Progress locale={locale} goalHistory={goalHistory} manual={manual}
-            onNavigate={onNavigate} />
-        </>}
-    </ScrollView>
-  );
-}
-
 /**
  * The textless home (prototype/textless-shell v2–v6): the duck centred high
  * with the step count and one footprints mark, nothing else. The header, date
  * line, card chrome, summary sentence, goal block, and source line are gone;
  * the full today summary (count, goal, ratio, source) stays the accessible
  * group's screen-reader label. The pill is inert — the stepper that taps it
- * lands with issue #44.
+ * lands with issue #44. Swiping left asks the duck to lead the way to
+ * Settings; screen readers get the same move as a labeled custom action, so
+ * the swipe is an extra affordance, never the only path.
  */
-function Today({ locale, goal, manual }: {
+function Today({ locale, goal, manual, onOpenSettings, petRef }: {
   locale: Locale; goal: number; manual: ManualState;
+  onOpenSettings: () => void; petRef: RefObject<PixelPetHandle | null>;
 }) {
   const copy = getCopy(locale);
   // Today renders from the local data owner: loading while the record reads,
@@ -344,14 +388,36 @@ function Today({ locale, goal, manual }: {
     const category = event === 'celebrate' ? 'cheer' : event;
     setBubbleEvent((prev) => ({ category, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
+  // The swipe (prototype v5): horizontal pans only — vertical moves keep
+  // their scroll and a motionless tap stays the duck's poke. The handler is
+  // read through a ref so the once-created PanResponder never goes stale.
+  const onSwipeRef = useRef(onOpenSettings);
+  onSwipeRef.current = onOpenSettings;
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_event, gesture) =>
+        Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderRelease: (_event, gesture) => {
+        if (gesture.dx <= -48 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+          onSwipeRef.current();
+        }
+      },
+    }),
+  ).current;
   return (
-    // The mascot is the home screen's center; the ring lives on the Progress
-    // screen. This group stays the single screen-reader source: the exact
-    // count, goal, ratio, and source in text, never visuals — including the
-    // goal-reached state (src/today.ts todayA11yLabel).
+    // The mascot is the home screen's center. This group stays the single
+    // screen-reader source: the exact count, goal, ratio, and source in
+    // text, never visuals — including the goal-reached state (src/today.ts
+    // todayA11yLabel). The open-settings custom action keeps a labeled path
+    // to Settings for screen readers (the swipe is the sighted extra).
     <View
       accessible
       accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
+      accessibilityActions={[{ name: 'openSettings', label: copy.openSettings }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'openSettings') onSwipeRef.current();
+      }}
+      {...swipe.panHandlers}
     >
       {/* Decorative slot: hidden from the accessibility tree (both platforms)
           so the group label stays the screen-reader source. The slot's fixed
@@ -365,7 +431,7 @@ function Today({ locale, goal, manual }: {
         style={s.petSlot}
       >
         <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent} />
-        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress}
+        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
           size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} />
       </View>
       {/* The count and the footprints mark, nothing else. Not a control: the
@@ -384,67 +450,29 @@ function Today({ locale, goal, manual }: {
 }
 
 /**
- * Progress ring built from rounded segments filling clockwise from 12
- * o'clock. The fill is the visual cue only — it never shows full before the
- * goal and caps there; the exact count and uncapped ratio stay in text.
+ * The date rows (prototype v3): Progress embeds in Settings' scroll below
+ * the setting rows — the seven local dates, each row showing its date and
+ * total, with the goal and source surviving in the row's accessibility
+ * label. The ring is gone: home already shows today's number. Each row's
+ * control opens the manual editor for that exact date.
  */
-function Ring({ lit }: { lit: number }) {
-  return (
-    <View style={s.ringTrack} accessible={false} importantForAccessibility="no-hide-descendants">
-      {Array.from({ length: RING_SEGMENTS }, (_, index) => (
-        <View
-          key={index}
-          style={[
-            s.ringSegment, index < lit && s.ringSegmentLit,
-            { transform: [{ rotate: `${segmentAngle(index)}deg` }, { translateY: -RING_RADIUS }] },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
 function Progress({ locale, goalHistory, manual, onNavigate }: {
   locale: Locale; goalHistory: GoalHistory | null; manual: ManualState;
   onNavigate: (action: NavigationAction) => void;
 }) {
   const copy = getCopy(locale);
   const dates = lastSevenLocalDates(new Date());
-  // The ring renders today's real total from the local data owner (manual is
-  // the only source until phase 3 connects Health). Each row renders from the
-  // same owner: the date's saved manual total (the visible Manual source
-  // label) or the truthful no-data state — Health totals arrive in phase 3.
-  // Each row's goal is that date's own: a goal change never rewrites history.
-  // The row control opens the manual editor for that exact date.
-  const todayDateKey = localDateKey(new Date());
-  const todayTotal = manual.kind === 'ready' && manual.totals !== null
-    ? manualTotalForDate(manual.totals, todayDateKey)
-    : null;
-  const snapshot: TodaySnapshot = manual.kind !== 'ready' ? { kind: 'loading' }
-    : manual.totals === null ? { kind: 'error' }
-    : todayTotal !== null ? { kind: 'loaded', steps: todayTotal, source: 'manual' }
-    : { kind: 'empty' };
-  const loaded = snapshot.kind === 'loaded' ? snapshot : null;
-  const goal = goalHistory ? goalForDate(goalHistory, todayDateKey) : DEFAULT_GOAL;
   return (
     <View>
-      <View
-        accessible
-        accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
-        style={s.ring}
-      >
-        <Ring lit={loaded ? litSegments(loaded.steps, goal) : 0} />
-        <View style={s.ringCenter} accessible={false} importantForAccessibility="no-hide-descendants">
-          <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
-            {loaded ? formatNumber(loaded.steps, locale) : '—'}
-          </Text>
-          <Text style={s.steps}>{copy.steps}</Text>
-        </View>
-      </View>
       <Text style={s.intro}>{copy.progressIntro}</Text>
       {dates.map((date, index) => {
         const label = index ? formatRowDate(date, locale) : copy.dateToday;
         const dateKey = localDateKey(date);
+        // Each row renders from the local data owner: the date's saved
+        // manual total or the truthful no-data state — Health totals arrive
+        // in phase 3. Each row's goal is that date's own: a goal change
+        // never rewrites history. The row control opens the manual editor
+        // for that exact date.
         const rowGoal = goalHistory ? goalForDate(goalHistory, dateKey) : DEFAULT_GOAL;
         const total = manual.kind === 'ready' && manual.totals !== null
           ? manualTotalForDate(manual.totals, dateKey)
@@ -452,10 +480,9 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
         const snapshot: TodaySnapshot = total !== null
           ? { kind: 'loaded', steps: total, source: 'manual' }
           : { kind: 'unavailable' };
-        const goalText = `${formatNumber(rowGoal, locale)} ${copy.steps}`;
         return (
           <View key={dateKey} style={s.progressRow}>
-            {/* The `accessible` group wraps only the three slot lines. An
+            {/* The `accessible` group wraps only the slot lines. An
                 `accessible` container flattens every descendant into one
                 element on iOS, so a button inside it vanishes from the
                 VoiceOver tree; the manual-entry control stays a sibling. */}
@@ -469,12 +496,6 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
                   {total !== null ? `${formatNumber(total, locale)} ${copy.steps}` : `— ${copy.steps}`}
                 </Text>
               </View>
-              <Text style={s.muted}>{copy.goal}: {goalText}</Text>
-              <Text style={s.muted}>
-                {snapshot.kind === 'loaded'
-                  ? `${copy.sourceLabel}: ${copy.sourceManual}`
-                  : copy.sourceUnavailable}
-              </Text>
             </View>
             <Pressable accessibilityRole="button"
               accessibilityLabel={`${total !== null ? copy.editManualTotal : copy.addManualTotal} — ${label}`}
@@ -490,12 +511,14 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
   );
 }
 
-function SettingsPage({ nav, locale, onNavigate, onClear, clearError, goalSubtitle }: {
-  nav: NavigationState; locale: Locale; onNavigate: (action: NavigationAction) => void;
+function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual }: {
+  locale: Locale; onNavigate: (action: NavigationAction) => void;
   onClear: () => void; clearError: string | null; goalSubtitle: string;
+  goalHistory: GoalHistory | null; manual: ManualState;
 }) {
   const copy = getCopy(locale);
-  const back = nav.settingsOrigin === 'today' ? copy.backToToday : copy.backToProgress;
+  // Home is the only root (prototype v2): Settings always returns there.
+  const back = copy.backToToday;
   const rows: ({ title: string; subtitle: string; destination: SettingsDestination } | {
     title: string; subtitle: string; clear: true;
   })[] = [
@@ -526,6 +549,11 @@ function SettingsPage({ nav, locale, onNavigate, onClear, clearError, goalSubtit
         ))}
       </View>
       {clearError && <Text style={s.languageError}>{copy.clearStorageError}</Text>}
+      {/* Progress embeds below the setting rows (prototype v2/v3): the date
+          rows ride the same scroll, so home stays the only root screen. */}
+      <View style={s.divider} />
+      <Progress locale={locale} goalHistory={goalHistory} manual={manual}
+        onNavigate={onNavigate} />
       <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
     </ScrollView>
   );
@@ -677,7 +705,7 @@ function ManualPage({ nav, locale, onNavigate, manual, onApply, onRemove }: {
   const removed = removedAt && existing === null && storageError === null;
   return (
     <ScrollView contentContainerStyle={s.content}>
-      <Header title={copy.manualTitle} action={copy.backToProgress} label={copy.backToProgress}
+      <Header title={copy.manualTitle} action={copy.backToSettings} label={copy.backToSettings}
         onPress={() => onNavigate({ type: 'back' })} />
       <View style={s.card}>
         <Text style={s.rowTitle}>{label}</Text>
@@ -713,29 +741,9 @@ function ManualPage({ nav, locale, onNavigate, manual, onApply, onRemove }: {
   );
 }
 
-function Tabs({ current, locale, onNavigate }: {
-  current: PrimaryTab; locale: Locale; onNavigate: (action: NavigationAction) => void;
-}) {
-  const copy = getCopy(locale);
-  const tabs: { id: PrimaryTab; title: string }[] = [
-    { id: 'today', title: copy.todayTitle }, { id: 'progress', title: copy.progressTitle },
-  ];
-  return (
-    <View style={s.tabs}>
-      {tabs.map((tab) => (
-        <Pressable key={tab.id} accessibilityRole="tab" accessibilityLabel={tab.title}
-          accessibilityState={{ selected: current === tab.id }}
-          onPress={() => onNavigate({ type: 'select-tab', tab: tab.id })}
-          style={[s.tab, current === tab.id && s.tabSelected]}>
-          <Text style={[s.tabText, current === tab.id && s.tabTextSelected]}>{tab.title}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.canvas },
+  screen: { flex: 1 },
   content: { padding: spacing.page, paddingTop: spacing.gutter, paddingBottom: spacing.screen },
   header: { minHeight: 68, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', marginBottom: spacing.page },
@@ -744,8 +752,9 @@ const s = StyleSheet.create({
     fontFamily: typeFace.display.bold },
   title: { color: colors.text, fontSize: typeSize.title, fontFamily: typeFace.display.heavy,
     marginTop: spacing.xs },
-  headerAction: { minHeight: 52, maxWidth: '48%', justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: spacing.xxl, borderRadius: radius.action, backgroundColor: colors.accent },
+  headerAction: { minHeight: 52, minWidth: 44, maxWidth: '48%', justifyContent: 'center',
+    alignItems: 'center', paddingHorizontal: spacing.xxl, borderRadius: radius.action,
+    backgroundColor: colors.accent },
   actionText: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
     textAlign: 'center' },
   // The textless home: content anchored near the top so the duck sits high
@@ -753,16 +762,6 @@ const s = StyleSheet.create({
   hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'center' },
-  ringTrack: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  ringSegment: {
-    position: 'absolute', width: RING_SEGMENT_WIDTH, height: RING_SEGMENT_HEIGHT,
-    borderRadius: RING_SEGMENT_WIDTH / 2, backgroundColor: colors.ringTrack,
-    left: (RING_SIZE - RING_SEGMENT_WIDTH) / 2, top: (RING_SIZE - RING_SEGMENT_HEIGHT) / 2,
-  },
-  ringSegmentLit: { backgroundColor: colors.ringLit },
-  ringCenter: { alignItems: 'center', maxWidth: 2 * (RING_RADIUS - RING_SEGMENT_HEIGHT - spacing.lg) },
   petSlot: {
     marginTop: spacing.section, alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
@@ -775,7 +774,6 @@ const s = StyleSheet.create({
     marginTop: spacing.xl, flexDirection: 'row', alignItems: 'baseline',
     gap: spacing.xl, padding: spacing.lg,
   },
-  steps: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.regular },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
     fontFamily: typeFace.text.regular, textAlign: 'center', marginTop: spacing.section },
   muted: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
@@ -844,13 +842,6 @@ const s = StyleSheet.create({
   },
   manualRemoveText: { color: colors.danger, fontSize: typeSize.label,
     fontFamily: typeFace.text.bold },
-  tabs: {
-    flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl, borderTopWidth: 1,
-    borderColor: colors.border, backgroundColor: colors.card,
-  },
-  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center',
-    borderRadius: radius.tab },
-  tabSelected: { backgroundColor: colors.accent },
-  tabText: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.semibold },
-  tabTextSelected: { color: colors.text, fontFamily: typeFace.text.heavy },
+  divider: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border,
+    marginTop: spacing.section, marginBottom: spacing.section },
 });

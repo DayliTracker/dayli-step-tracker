@@ -98,7 +98,9 @@ test('the bubble docks above the duck inside the hidden pet slot', () => {
     appSource.indexOf('function Progress('),
   );
   const bubbleAt = todaySource.indexOf('<ChatBubble');
-  const petAt = todaySource.indexOf('<PixelPet');
+  // Space-anchored: the Today props type mentions PixelPetHandle, which
+  // would match the un-anchored lookup before the JSX does.
+  const petAt = todaySource.indexOf('<PixelPet ');
   assert.ok(bubbleAt !== -1, 'Today renders the talk box');
   assert.ok(petAt > bubbleAt, 'the bubble sits above the pet in the slot');
   assert.match(todaySource, /style=\{s\.petSlot\}[\s\S]*<ChatBubble[\s\S]*<PixelPet/,
@@ -118,7 +120,8 @@ test('the duck tap target is labeled while the slot keeps it decorative', () => 
 });
 
 test('mascot events surface their line; the engine fires poke, walk, and celebrate', () => {
-  assert.match(engineSource, /export type PixelPetEvent = 'poke' \| 'walk' \| 'celebrate'/);
+  assert.match(engineSource,
+    /export type PixelPetEvent = 'poke' \| 'walk' \| 'celebrate' \| 'lead' \| 'homecome'/);
   // Poke fires from the poke handler itself.
   assert.match(engineSource, /const handlePoke = useCallback\(\(\) => \{\s*\n\s*onEventRef\.current\?\.\('poke'\)/);
   // Walk and celebrate fire once per mood entry, from an effect that keys on
@@ -132,6 +135,10 @@ test('mascot events surface their line; the engine fires poke, walk, and celebra
   );
   assert.match(todaySource, /onEvent=\{say\}/);
   assert.match(todaySource, /nonce: \(prev\?\.nonce \?\? 0\) \+ 1/);
+  // Issue #42: the duck-led navigation speaks through the same hook — the
+  // exit dash says a lead line, the arrival waddle a homecome greeting.
+  assert.match(engineSource, /onEventRef\.current\?\.\('lead'\)/);
+  assert.match(engineSource, /onEventRef\.current\?\.\('homecome'\)/);
 });
 
 test('the bubble speaks the day’s first line, then idles every ~18–25s with ~4s holds', () => {

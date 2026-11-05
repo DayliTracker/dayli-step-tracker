@@ -1,7 +1,7 @@
 export type Locale = 'en' | 'vi';
 
 const english = {
-  todayTitle: 'Today', progressTitle: 'Progress', settingsTitle: 'Settings', steps: 'steps',
+  settingsTitle: 'Settings', steps: 'steps',
   goal: 'Daily goal',
   sourceUnavailable: 'No step data for this date yet.',
   todayLoading: 'Loading today’s steps…',
@@ -41,7 +41,7 @@ const english = {
   clearStorageError: 'App data could not be cleared on this device.',
   cancel: 'Cancel', gotIt: 'Got it', english: 'English', vietnamese: 'Tiếng Việt',
   selected: 'Selected', openSettings: 'Open Settings', backToSettings: 'Back to Settings',
-  backToToday: 'Back to Today', backToProgress: 'Back to Progress',
+  backToToday: 'Back to Today',
   petPoke: 'Poke the duck',
 };
 
@@ -50,7 +50,7 @@ export type Copy = { [Key in keyof typeof english]: string };
 const translations: Record<Locale, Copy> = {
   en: english,
   vi: {
-    todayTitle: 'Hôm nay', progressTitle: 'Tiến độ', settingsTitle: 'Cài đặt', steps: 'bước',
+    settingsTitle: 'Cài đặt', steps: 'bước',
     goal: 'Mục tiêu hằng ngày',
     sourceUnavailable: 'Chưa có dữ liệu bước chân cho ngày này.',
     todayLoading: 'Đang tải số bước hôm nay…',
@@ -91,7 +91,7 @@ const translations: Record<Locale, Copy> = {
     clearStorageError: 'Không thể xóa dữ liệu ứng dụng trên thiết bị này.',
     cancel: 'Hủy', gotIt: 'Đã hiểu', english: 'English', vietnamese: 'Tiếng Việt',
     selected: 'Đã chọn', openSettings: 'Mở Cài đặt', backToSettings: 'Quay lại Cài đặt',
-    backToToday: 'Quay lại Hôm nay', backToProgress: 'Quay lại Tiến độ',
+    backToToday: 'Quay lại Hôm nay',
     petPoke: 'Chạm vào vịt',
   },
 };
@@ -119,8 +119,8 @@ export function resolveInitialLocale(device: Locale, override: Locale | null): L
  * The mascot's voice (prototype/textless-shell v4): short lines the speech
  * bubble speaks. The bubble is the duck talking, never UI copy — home stays
  * textless otherwise. Pools are verbatim from the prototype's LINES so the
- * approved wording ships unchanged; `lead` and `homecome` sit ready for
- * issue #42's duck-led navigation to speak.
+ * approved wording ships unchanged; `lead` and `homecome` are issue #42's
+ * duck-led navigation lines (the exit dash and the arrival waddle).
  */
 export type BubbleCategory =
   | 'cute' | 'nudge' | 'poke' | 'walk' | 'cheer' | 'dizzy' | 'stroll'

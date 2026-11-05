@@ -5,26 +5,57 @@ import { getCopy } from '../src/localization.ts';
 import { createNavigationState, navigate } from '../src/navigation.ts';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const navSource = readFileSync(new URL('../src/navigation.ts', import.meta.url), 'utf8');
 
-test('tabs, Settings origins, and Settings destinations navigate correctly', () => {
+test('home is the only root: settings opens from home and returns through settings', () => {
   const initial = createNavigationState();
   assert.equal(initial.screen, 'today');
-  assert.equal(navigate(navigate(initial, { type: 'open-settings' }), { type: 'back' }).screen, 'today');
-  const progress = navigate(initial, { type: 'select-tab', tab: 'progress' });
-  const settings = navigate(progress, { type: 'open-settings' });
-  assert.deepEqual(settings, { screen: 'settings', settingsOrigin: 'progress', manualDate: null });
+  const settings = navigate(initial, { type: 'open-settings' });
+  assert.deepEqual(settings, { screen: 'settings', manualDate: null });
   const goal = navigate(settings, { type: 'open-destination', destination: 'goal' });
   assert.equal(navigate(goal, { type: 'back' }).screen, 'settings');
-  assert.equal(navigate(navigate(goal, { type: 'back' }), { type: 'back' }).screen, 'progress');
+  assert.equal(navigate(navigate(goal, { type: 'back' }), { type: 'back' }).screen, 'today');
+  // The tab bar's navigation action is gone: no case handles it any more.
+  assert.equal(navigate(initial, { type: 'select-tab', tab: 'progress' }), undefined);
+});
+
+test('the tab bar and its navigation action are gone everywhere', () => {
+  assert.doesNotMatch(navSource, /select-tab|PrimaryTab|settingsOrigin/);
+  assert.doesNotMatch(appSource, /select-tab|function Tabs\(|accessibilityRole="tab"/);
+  // Settings' back control is the labeled real button home (issue #42:
+  // screen readers keep real buttons — the swipe is the extra affordance).
+  assert.match(appSource, /action=\{back\} label=\{back\}/);
+});
+
+test('home opens Settings through the duck-led swipe; the transition never traps navigation', () => {
+  const panStart = appSource.indexOf('PanResponder.create');
+  assert.ok(panStart >= 0, 'home carries a PanResponder swipe (no new dependency)');
+  const pan = appSource.slice(panStart, appSource.indexOf('swipe.panHandlers'));
+  // Horizontal pans only, so the swipe never fights the ScrollView, and a
+  // motionless tap stays the duck's poke. The release needs a decisive,
+  // leftward drag — the prototype's 48px horizontal-only rule.
+  assert.match(pan, /Math\.abs\(gesture\.dx\) > Math\.abs\(gesture\.dy\)/);
+  assert.match(pan, /gesture\.dx <= -48/);
+  // The duck leads when it can; a busy duck changes screens immediately.
+  assert.match(appSource, /petRef\.current\?\.lead\(\) \?\? false/);
+  assert.match(appSource, /led \? LEAD_MS \+ 30 : 0/,
+    'a busy duck never delays the screen change');
+  // Screen readers keep a labeled path: the open-settings custom action.
+  assert.match(appSource,
+    /accessibilityActions=\{\[\{ name: 'openSettings', label: copy\.openSettings \}\]\}/);
+  // Returning home plays the arrival waddle.
+  assert.match(appSource, /petRef\.current\?\.arrive\(\)/);
 });
 
 test('shell labels are translated and complete in both supported locales', () => {
-  assert.equal(getCopy('en').todayTitle, 'Today');
-  assert.equal(getCopy('vi').todayTitle, 'Hôm nay');
-  assert.equal(getCopy('en').progressTitle, 'Progress');
-  assert.equal(getCopy('vi').progressTitle, 'Tiến độ');
   assert.equal(getCopy('en').settingsTitle, 'Settings');
   assert.equal(getCopy('vi').settingsTitle, 'Cài đặt');
+  assert.equal(getCopy('en').backToToday, 'Back to Today');
+  assert.equal(getCopy('vi').backToToday, 'Quay lại Hôm nay');
+  assert.equal(getCopy('en').openSettings, 'Open Settings');
+  assert.equal(getCopy('vi').openSettings, 'Mở Cài đặt');
+  assert.equal(getCopy('en').progressIntro, 'Today and your previous six local days.');
+  assert.equal(getCopy('vi').progressIntro, 'Hôm nay và sáu ngày gần nhất theo giờ địa phương.');
   assert.equal(Object.keys(getCopy('en')).length, Object.keys(getCopy('vi')).length);
   assert.ok(Object.values(getCopy('en')).every((value) => value.trim()));
   assert.ok(Object.values(getCopy('vi')).every((value) => value.trim()));
@@ -52,20 +83,26 @@ test('Settings lists all destinations and clear-data is a confirmed destructive 
 
 test('interactive controls have accessible names and at least 48-point touch targets', () => {
   const pressables = Array.from(appSource.matchAll(/<Pressable\b([\s\S]*?)>/g), (match) => match[1]);
-  // 5 shell controls (including the device-language row on the language page)
-  // + the per-date manual-entry control in the Progress rows
+  // 4 shell controls (the header back actions, the settings rows, and the
+  // device-language row on the language page)
+  // + the per-date manual-entry control in the Settings date rows
   // + the goal editor's save control
   // + the manual editor's save and remove controls.
-  assert.equal(pressables.length, 9);
+  assert.equal(pressables.length, 8);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
   }
 
-  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'tab', 'manualAction',
+  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'manualAction',
     'manualRemove', 'goalSave']) {
     const style = appSource.match(new RegExp(`${styleName}:\\s*\\{[^}]*minHeight:\\s*(\\d+)`));
     assert.ok(style, `${styleName} must declare a touch target`);
     assert.ok(Number(style[1]) >= 48, `${styleName} must be at least 48 points high`);
   }
+
+  // Header actions clear the 44pt width minimum too (issue #42 supersedes #24).
+  const headerAction = appSource.match(/headerAction:\s*\{[^}]*\}/);
+  assert.ok(headerAction, 'the header action style exists');
+  assert.match(headerAction[0], /minWidth:\s*44/, 'header actions are at least 44 points wide');
 });

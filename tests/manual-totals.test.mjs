@@ -265,18 +265,17 @@ test('the shell wires manual totals, Today, and the real clear-data flow', () =>
   assert.match(appSource, /<Text style=\{s\.disclosure\}>\{copy\.dataDisclosure\}<\/Text>/);
 });
 
-test('navigation reaches the manual editor from a Progress row and back', () => {
+test('navigation reaches the manual editor from a Settings date row and back', () => {
   const initial = createNavigationState();
-  const progress = navigate(initial, { type: 'select-tab', tab: 'progress' });
-  const manual = navigate(progress, { type: 'open-manual', dateKey: '2026-10-31' });
+  const settings = navigate(initial, { type: 'open-settings' });
+  const manual = navigate(settings, { type: 'open-manual', dateKey: '2026-10-31' });
   assert.equal(manual.screen, 'manual');
   assert.equal(manual.manualDate, '2026-10-31');
-  assert.equal(manual.settingsOrigin, 'progress', 'back returns to the tab that opened it');
-  assert.equal(navigate(manual, { type: 'back' }).screen, 'progress');
-  // The editor cannot be opened from Settings or its destinations.
-  const settings = navigate(progress, { type: 'open-settings' });
+  assert.equal(navigate(manual, { type: 'back' }).screen, 'settings',
+    'the editor returns through Settings, the only screen that opens it');
+  // The editor cannot be opened from home or the destinations.
   assert.equal(
-    navigate(settings, { type: 'open-manual', dateKey: '2026-10-31' }), settings);
+    navigate(initial, { type: 'open-manual', dateKey: '2026-10-31' }), initial);
   const goal = navigate(settings, { type: 'open-destination', destination: 'goal' });
   assert.equal(navigate(goal, { type: 'open-manual', dateKey: '2026-10-31' }), goal);
 });

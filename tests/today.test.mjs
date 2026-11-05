@@ -22,13 +22,12 @@ test('ring fills toward the goal and visually caps there without passing it', ()
   assert.equal(litSegments(2000, 0), 0, 'a zero goal lights nothing');
 });
 
-test('segment angles step clockwise from 12 oclock and the view rotates each segment', () => {
+test('segment angles step clockwise from 12 oclock', () => {
+  // The ring's render left the shell with the tab bar (issue #42 embeds the
+  // date rows in Settings without it); the math stays in src/today.ts.
   assert.equal(segmentAngle(0), 0);
   assert.equal(segmentAngle(RING_SEGMENTS / 4), 90);
   assert.equal(segmentAngle(RING_SEGMENTS / 2), 180);
-  assert.ok(appSource.includes(
-    '{ rotate: `${segmentAngle(index)}deg` }, { translateY: -RING_RADIUS }',
-  ));
 });
 
 test('ratio text keeps the uncapped value with per-locale separators', () => {
@@ -205,9 +204,9 @@ test('Today wires the textless hero: pet, count, footprints mark, and the a11y s
     appSource.indexOf('function Progress('),
   );
   assert.match(appSource, /todayA11yLabel\(snapshot/);
-  // The saved per-date goal feeds every goal line (issue #17), so the wiring
-  // names the `goal` value, not the DEFAULT_GOAL constant.
-  assert.match(appSource, /litSegments\(loaded\.steps, goal\)/);
+  // The saved per-date goal feeds every goal line (issue #17): each date row
+  // reads its own day's goal, not the DEFAULT_GOAL constant.
+  assert.match(appSource, /goalForDate\(goalHistory, dateKey\)/);
   assert.match(todaySource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
   assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, goal\), 1\)/,
     'today progress is capped at 1 before it reaches the mood machine');
