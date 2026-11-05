@@ -12,6 +12,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { colors } from '../src/tokens';
+import {
+  DIZZY_MS, DOUBLE_TAP_MS, HOP_MS, SLEEP_PRESS_MS, SLEEP_WAKE_MS, STROLL_LEG_MS,
+} from '../src/moods';
 
 /**
  * The seven frames every mascot pack generates, in engine frame-name order:
@@ -33,21 +37,31 @@ export type PixelPetParticles = {
 };
 
 type FrameName = keyof PixelPetFrames;
-type Mood = 'idle' | 'walk' | 'celebrate' | 'lead' | 'arrive';
+/** The mood repertoire: the goal-driven trio, #42's navigation bursts, and
+    #43's gestures — sleep (long-press), dizzy (wiggle), stroll (hold home),
+    hop (double-tap). */
+type Mood = 'idle' | 'walk' | 'celebrate' | 'lead' | 'arrive'
+  | 'sleep' | 'dizzy' | 'stroll' | 'hop';
 
 /** Mascot moments other surfaces can speak or react to (issue #29's bubble).
     `lead`/`homecome` are issue #42's duck-led navigation lines. */
-export type PixelPetEvent = 'poke' | 'walk' | 'celebrate' | 'lead' | 'homecome';
+export type PixelPetEvent = 'poke' | 'walk' | 'celebrate' | 'lead' | 'homecome'
+  | 'dizzy' | 'stroll';
 
 /**
  * What the shell asks of the duck during navigation (prototype v5): `lead`
  * dashes it off the left edge on its walk frames — or reports `false` when it
  * is busy, and the screen change happens at once (navigation is never
  * trapped); `arrive` waddles it back in from the left with a greeting.
+ * Issue #43 adds the shell's mood verdicts: `wake` ends sleep on any touch,
+ * `dizzy` plays the wiggle's wobble, `stroll` walks the background long-hold.
  */
 export type PixelPetHandle = {
   lead: () => boolean;
   arrive: () => void;
+  wake: () => void;
+  dizzy: () => void;
+  stroll: () => void;
 };
 
 const WALK_MS = 2600;
@@ -71,6 +85,10 @@ type PixelPetProps = {
       bursts (lead, homecome) — the speech bubble's event hook (issue #29);
       dizzy and stroll arrive with issue #43. */
   onEvent?: (event: PixelPetEvent) => void;
+  /** Tracks whether the pointer is on the duck (issue #43): the home shell
+      gates its wiggle-dizzy test and stroll long-hold on it, so those
+      gestures answer only when they began on the duck — never the pill. */
+  onDuckTouch?: (active: boolean) => void;
 };
 
 /**
@@ -81,9 +99,12 @@ type PixelPetProps = {
  * adds the navigation bursts (issue #42, prototype v5): `lead` dashes the
  * duck off the left edge on its walk frames — returning `false` when busy so
  * the shell changes screens at once — and `arrive` waddles it back in.
+ * Issue #43 adds the moods: long-press (~1.2s) sleeps (breathe-dim, z's, any
+ * touch or ~12s wakes it), a double-tap hops with a heart, and the shell's
+ * verdicts play dizzy and stroll. A busy duck ignores every mood request.
  */
 function PixelPetInner({
-  frames, particles, progress, size = 170, accessibilityLabel, onEvent,
+  frames, particles, progress, size = 170, accessibilityLabel, onEvent, onDuckTouch,
 }: PixelPetProps, ref: ForwardedRef<PixelPetHandle>) {
   const [mood, setMood] = useState<Mood>(progress >= 1 ? 'celebrate' : 'idle');
   const [idleFrame, setIdleFrame] = useState<FrameName>('idle');
@@ -96,13 +117,28 @@ function PixelPetInner({
   // `mood` alone — a new callback from the parent must not re-run it.
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
+  const onDuckTouchRef = useRef(onDuckTouch);
+  onDuckTouchRef.current = onDuckTouch;
 
   const prevProgress = useRef(progress);
+  // Mirrors for the gesture callbacks: they fire between renders, so they
+  // read mood and progress through refs, never stale closures.
+  const moodRef = useRef(mood);
+  moodRef.current = mood;
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
+  const lastTapAt = useRef(0);
+  // Set when a touch wakes the sleeper, so that press's release does not also
+  // play a poke — the wake already answered it.
+  const justWoke = useRef(false);
   const bobY = useRef(new Animated.Value(0)).current;
   const tilt = useRef(new Animated.Value(0)).current;
   const squash = useRef(new Animated.Value(1)).current;
   const pokePunch = useRef(new Animated.Value(1)).current;
   const heart = useRef(new Animated.Value(0)).current;
+  // Sleep dims the whole duck (prototype v4 breathe-dim) and restores it on
+  // wake; one driver serves both directions.
+  const dim = useRef(new Animated.Value(1)).current;
   // The navigation dash (issue #42): the duck's horizontal travel off the
   // left edge and back, driven outside the mood machine so a swipe never
   // fights the progress-driven bursts.
@@ -110,6 +146,9 @@ function PixelPetInner({
   // The dash clears the left edge from wherever the duck sits: from the
   // slot's center it takes half the screen plus the duck's own width.
   const navDistance = screenWidth / 2 + size;
+  // The stroll roams the open width: the slot's center to each edge minus a
+  // margin, so the walk reads across the screen without clipping the duck.
+  const strollDistance = Math.max(0, screenWidth / 2 - size / 2 - 24);
 
   // --- mood state machine ----------------------------------------------------
 
@@ -118,8 +157,13 @@ function PixelPetInner({
   // render after `setMood('walk')`, where no fresh rise is visible and the
   // walk burst self-cancels (review round 1). A mood is only ever set from a
   // progress reading that still holds, so a fall below 1 is the single exit
-  // path walk and celebrate need.
+  // path walk and celebrate need. Sleep defers them: it ends on a touch or
+  // its own timeout (issue #43), never on a data change mid-nap.
   useEffect(() => {
+    if (moodRef.current === 'sleep') {
+      prevProgress.current = progress;
+      return;
+    }
     if (progress >= 1) {
       setMood('celebrate');
     } else if (progress > prevProgress.current) {
@@ -132,10 +176,11 @@ function PixelPetInner({
     prevProgress.current = progress;
   }, [progress]);
 
-  // Announce mood entries once per transition (walk, celebrate) — the bubble
-  // speaks its event line then; a held mood never re-fires.
+  // Announce mood entries once per transition (walk, celebrate, and issue
+  // #43's dizzy and stroll) — the bubble speaks its event line then; a held
+  // mood never re-fires. Sleep and hop show instead of speaking.
   useEffect(() => {
-    if (mood === 'walk' || mood === 'celebrate') onEventRef.current?.(mood);
+    if (mood === 'walk' || mood === 'celebrate' || mood === 'dizzy' || mood === 'stroll') onEventRef.current?.(mood);
   }, [mood]);
 
   // walk bursts settle back into idle
@@ -156,10 +201,40 @@ function PixelPetInner({
     return () => clearTimeout(t);
   }, [mood, slideX, progress]);
 
+  // Issue #43's transient moods: dizzy collects itself, the hop lands, and
+  // both hand the duck back to celebrating when the goal still holds.
+  useEffect(() => {
+    if (mood !== 'dizzy' && mood !== 'hop') return;
+    const t = setTimeout(
+      () => setMood(progress >= 1 ? 'celebrate' : 'idle'),
+      mood === 'dizzy' ? DIZZY_MS : HOP_MS,
+    );
+    return () => clearTimeout(t);
+  }, [mood, progress]);
+
+  // Sleep self-wakes (prototype v4 ~12s), quietly — the surprised startle is
+  // the touch-wake's, not the timeout's. The stroll ends through its own
+  // animation's finished callback, not a timer.
+  useEffect(() => {
+    if (mood !== 'sleep') return;
+    const t = setTimeout(() => setMood('idle'), SLEEP_WAKE_MS);
+    return () => clearTimeout(t);
+  }, [mood]);
+
+  // The breathe-dim: sleeping ducks sit at a lower opacity, everything else
+  // restores. One driver, so a wake and a re-sleep never fight.
+  useEffect(() => {
+    Animated.timing(dim, {
+      toValue: mood === 'sleep' ? 0.72 : 1,
+      duration: 450,
+      useNativeDriver: true,
+    }).start();
+  }, [mood, dim]);
+
   // --- frame timers ----------------------------------------------------------
 
   useEffect(() => {
-    if (mood === 'walk' || mood === 'lead' || mood === 'arrive') {
+    if (mood === 'walk' || mood === 'lead' || mood === 'arrive' || mood === 'stroll') {
       const swap = setInterval(
         () =>
           setWalkFrame((f) => (f === 'walkA' ? 'walkB' : 'walkA')),
@@ -225,7 +300,49 @@ function PixelPetInner({
           ])
         )
       );
-    } else if (mood === 'walk' || mood === 'lead' || mood === 'arrive') {
+    } else if (mood === 'sleep') {
+      // Sleep breathes (prototype v4): a slow, deep bob at half the idle
+      // pace — the held blink frame and the dim below carry the rest.
+      play(
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(bobY, {
+              toValue: -3,
+              duration: 1600,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(bobY, {
+              toValue: 0,
+              duration: 1600,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ])
+        )
+      );
+    } else if (mood === 'dizzy') {
+      // Dizzy wobbles (prototype v4): a wide, loose tilt sweep — the star
+      // layer and the look frame sell the rest.
+      play(
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(tilt, {
+              toValue: 12,
+              duration: 240,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(tilt, {
+              toValue: -12,
+              duration: 240,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ])
+        )
+      );
+    } else if (mood === 'walk' || mood === 'lead' || mood === 'arrive' || mood === 'stroll') {
       play(
         Animated.loop(
           Animated.sequence([
@@ -259,6 +376,31 @@ function PixelPetInner({
             }),
           ])
         )
+      );
+    } else if (mood === 'hop') {
+      // Hop (issue #43 double-tap): the celebrate hop played once — up,
+      // down, and an elastic landing while the heart rises.
+      play(
+        Animated.sequence([
+          Animated.timing(bobY, {
+            toValue: -18,
+            duration: 260,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bobY, {
+            toValue: 3,
+            duration: 230,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bobY, {
+            toValue: 0,
+            duration: 220,
+            easing: Easing.out(Easing.elastic(2)),
+            useNativeDriver: true,
+          }),
+        ])
       );
     } else {
       // celebrate: hop + squash-and-stretch on landing; volume preserved
@@ -313,37 +455,113 @@ function PixelPetInner({
     };
   }, [mood, bobY, tilt, squash]);
 
-  // --- poke --------------------------------------------------------------------
+  // --- poke, sleep, hop (the duck's own gestures, issue #43) --------------------
 
-  const handlePoke = useCallback(() => {
-    onEventRef.current?.('poke');
-    setPoked(true);
+  /** The rising heart: a poke's and a hop's shared particle burst. */
+  const playHeart = useCallback(() => {
     setHeartKey((k) => k + 1);
     heart.setValue(0);
-    Animated.parallel([
-      Animated.timing(heart, {
-        toValue: 1,
-        duration: 750,
-        easing: Easing.out(Easing.quad),
+    Animated.timing(heart, {
+      toValue: 1,
+      duration: 750,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [heart]);
+
+  const handlePoke = useCallback(() => {
+    // A touch that woke the sleeper already answered this press — the wake's
+    // surprised startle is the response, not a poke on top of it.
+    if (justWoke.current) {
+      justWoke.current = false;
+      return;
+    }
+    // Double-tap hops (prototype v4): the first tap pokes as always; a tap
+    // landing within the window turns into the hop.
+    const now = Date.now();
+    const isDoubleTap = now - lastTapAt.current <= DOUBLE_TAP_MS;
+    lastTapAt.current = now;
+    if (isDoubleTap && moodRef.current === 'idle') {
+      setMood('hop');
+      playHeart();
+      return;
+    }
+    onEventRef.current?.('poke');
+    setPoked(true);
+    playHeart();
+    Animated.sequence([
+      Animated.spring(pokePunch, {
+        toValue: 1.14,
+        friction: 3,
+        tension: 200,
         useNativeDriver: true,
       }),
-      Animated.sequence([
-        Animated.spring(pokePunch, {
-          toValue: 1.14,
-          friction: 3,
-          tension: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(pokePunch, {
-          toValue: 1,
-          friction: 4,
-          tension: 160,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.spring(pokePunch, {
+        toValue: 1,
+        friction: 4,
+        tension: 160,
+        useNativeDriver: true,
+      }),
     ]).start();
     setTimeout(() => setPoked(false), POKE_MS);
-  }, [heart, pokePunch]);
+  }, [playHeart, pokePunch]);
+
+  const wake = useCallback(() => {
+    if (moodRef.current !== 'sleep') return;
+    // The surprised startle is the poke's (POKE_MS) — the wake reuses it.
+    setMood('idle');
+    setPoked(true);
+    justWoke.current = true;
+    setTimeout(() => setPoked(false), POKE_MS);
+  }, []);
+
+  // Touch-start on the duck: first flags the pointer for the shell's gesture
+  // gates, then wakes a sleeper — any touch ends sleep, surprised (v4).
+  const handleDuckTouchStart = useCallback(() => {
+    onDuckTouchRef.current?.(true);
+    if (moodRef.current !== 'sleep') return;
+    wake();
+  }, [wake]);
+  const handleDuckTouchEnd = useCallback(() => {
+    onDuckTouchRef.current?.(false);
+  }, []);
+
+  // Long-press sleeps (prototype v4 ~1.2s): the blink frame held, the breathe
+  // and dim below, the z's over the head. Only a resting duck naps.
+  const handleLongPress = useCallback(() => {
+    if (moodRef.current !== 'idle') return;
+    setMood('sleep');
+  }, []);
+
+  // --- shell-triggered moods (issue #43) ---------------------------------------
+
+  // The wiggle verdict lands here (the home pan handler runs the pure test
+  // in src/moods.ts): a loose wobble on the look frame while the stars spin.
+  const dizzy = useCallback(() => {
+    if (moodRef.current !== 'idle') return;
+    setMood('dizzy');
+  }, []);
+
+  // The background long-hold's stroll: walk frames across the open width and
+  // home again. The slideX animation is the clock; its finished callback
+  // settles the mood, so no timer can race it.
+  const stroll = useCallback(() => {
+    if (moodRef.current !== 'idle') return;
+    setMood('stroll');
+    const leg = (toValue: number, duration: number) => Animated.timing(slideX, {
+      toValue, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: true,
+    });
+    slideX.setValue(0);
+    Animated.sequence([
+      leg(strollDistance, STROLL_LEG_MS),
+      leg(-strollDistance, STROLL_LEG_MS * 1.4),
+      leg(0, STROLL_LEG_MS),
+    ]).start(({ finished }) => {
+      if (!finished) return;
+      slideX.setValue(0);
+      setMood(progressRef.current >= 1 ? 'celebrate' : 'idle');
+    });
+  }, [slideX, strollDistance]);
 
   // --- navigation (issue #42, prototype v5) ------------------------------------
 
@@ -378,27 +596,39 @@ function PixelPetInner({
     }).start();
   }, [mood, navDistance, slideX]);
 
-  useImperativeHandle(ref, () => ({ lead, arrive }));
+  useImperativeHandle(ref, () => ({ lead, arrive, wake, dizzy, stroll }));
 
   // --- render --------------------------------------------------------------------
 
   const frame: FrameName = poked
     ? 'surprised'
-    : mood === 'celebrate'
+    : mood === 'celebrate' || mood === 'hop'
       ? 'happy'
-      : mood === 'walk' || mood === 'lead' || mood === 'arrive'
-        ? walkFrame
-        : idleFrame;
+      : mood === 'sleep'
+        ? 'blink' // held closed eyes: the nap face over the existing frames
+        : mood === 'dizzy'
+          ? 'look' // the glazed side-glance reads dizzy with the wobble
+          : mood === 'walk' || mood === 'lead' || mood === 'arrive' || mood === 'stroll'
+            ? walkFrame
+            : idleFrame;
 
   return (
     <Pressable
       onPress={handlePoke}
+      onLongPress={handleLongPress}
+      delayLongPress={SLEEP_PRESS_MS}
+      onTouchStart={handleDuckTouchStart}
+      onTouchEnd={handleDuckTouchEnd}
+      onTouchCancel={handleDuckTouchEnd}
       hitSlop={20}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        {mood === 'celebrate' && <Sparkles size={size} star={particles.star} />}
+        {(mood === 'celebrate' || mood === 'dizzy') && (
+          <Sparkles size={size} star={particles.star} />
+        )}
+        {mood === 'sleep' && <Snores size={size} />}
         {heartKey > 0 && (
           <Animated.Image
             key={heartKey}
@@ -426,10 +656,11 @@ function PixelPetInner({
         )}
         <Animated.View
           style={{
+            opacity: dim,
             transform: [
               { translateX: slideX },
               { translateY: bobY },
-              { rotate: tilt.interpolate({ inputRange: [-4, 4], outputRange: ['-4deg', '4deg'] }) },
+              { rotate: tilt.interpolate({ inputRange: [-12, 12], outputRange: ['-12deg', '12deg'] }) },
               { scale: pokePunch },
               { scaleX: squash },
               { scaleY: squash.interpolate({ inputRange: [1, 1.12], outputRange: [1, 0.9] }) },
@@ -445,6 +676,77 @@ function PixelPetInner({
         </Animated.View>
       </View>
     </Pressable>
+  );
+}
+
+/** Floating z's over a sleeping duck (prototype v4). Text glyphs, not art —
+    the mood repertoire stays transforms over the existing particle set, so
+    no new assets enter the mascot pack (issue #43). */
+function Snores({ size }: { size: number }) {
+  const zs = useRef(
+    Array.from({ length: 3 }, (_, i) => ({
+      left: size * (0.56 + i * 0.1),
+      top: size * (0.2 - i * 0.09),
+      fontSize: Math.round(size * (0.1 + i * 0.03)),
+      delay: i * 550,
+      anim: new Animated.Value(0),
+    }))
+  ).current;
+
+  useEffect(() => {
+    const loops = zs.map(({ anim, delay }) => {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 2200,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return loop;
+    });
+    return () => loops.forEach((l) => l.stop());
+  }, [zs]);
+
+  return (
+    <View
+      style={[styles.snoreLayer, { width: size, height: size }]}
+      pointerEvents="none"
+      accessible={false}
+    >
+      {zs.map(({ anim, left, top, fontSize }, i) => (
+        <Animated.Text
+          key={i}
+          style={[
+            styles.z,
+            {
+              left: left as number,
+              top: top as number,
+              fontSize,
+              opacity: anim.interpolate({
+                inputRange: [0, 0.25, 0.85, 1],
+                outputRange: [0, 1, 1, 0],
+              }),
+              transform: [
+                {
+                  translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [0, size * 0.1] }),
+                },
+                {
+                  translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.14] }),
+                },
+              ],
+            },
+          ]}
+        >
+          z
+        </Animated.Text>
+      ))}
+    </View>
   );
 }
 
@@ -515,6 +817,15 @@ const styles = StyleSheet.create({
   star: {
     position: 'absolute',
     bottom: '18%',
+  },
+  snoreLayer: {
+    position: 'absolute',
+    zIndex: 1,
+  },
+  z: {
+    position: 'absolute',
+    color: colors.text,
+    fontWeight: '800',
   },
   heart: {
     position: 'absolute',

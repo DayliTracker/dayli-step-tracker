@@ -7,8 +7,8 @@ import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert, Animated, Easing, PanResponder, Pressable, SafeAreaView, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  Alert, Animated, Easing, GestureResponderEvent, PanResponder, Pressable,
+  SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import {
@@ -41,6 +41,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import PixelPet, { LEAD_MS, type PixelPetEvent, type PixelPetHandle } from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
+import { STROLL_HOLD_MS, countFlips, isWiggle } from './src/moods';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
 // The mascot slot: 200 keeps the supersampled frames a crisp downscale while
@@ -351,7 +352,11 @@ function Header({ title, icon, action, label, onPress }: {
  * group's screen-reader label. The pill is inert — the stepper that taps it
  * lands with issue #44. Swiping left asks the duck to lead the way to
  * Settings; screen readers get the same move as a labeled custom action, so
- * the swipe is an extra affordance, never the only path.
+ * the swipe is an extra affordance, never the only path. Issue #43 adds the
+ * mood gestures: long-press the duck to sleep, wiggle it dizzy, double-tap a
+ * hop, and hold the background (never the duck or the pill) for a stroll —
+ * every one of them composes with the swipe: a busy duck ignores new moods,
+ * and no mood ever delays the screen change.
  */
 function Today({ locale, goal, manual, onOpenSettings, petRef }: {
   locale: Locale; goal: number; manual: ManualState;
@@ -380,30 +385,91 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
   // through one hook; a bumped nonce replays even a repeated category. The
   // bubble itself owns the idle chatter — the day's first line is picked from
   // today's date, so it never needs persisted state. Dizzy and stroll speak
-  // the same way once #43 wires their moods; #42's lead/homecome reuse the
-  // same pools (src/localization.ts).
+  // the same way (issue #43); #42's lead/homecome reuse the same pools
+  // (src/localization.ts). Sleep and hop show instead of speaking.
   const [bubbleEvent, setBubbleEvent] = useState<BubbleEvent | null>(null);
   const say = useCallback((event: PixelPetEvent) => {
     // The engine says celebrate; the pool (prototype v4) says cheer.
     const category = event === 'celebrate' ? 'cheer' : event;
     setBubbleEvent((prev) => ({ category, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
+  // Issue #43 gesture gates. `duckTouch`/`pillTouch` record where a touch
+  // began: the wiggle-dizzy test answers only drags that began on the duck,
+  // the stroll long-hold only holds that began on neither duck nor pill.
+  // The talk box never counts — it is pointerEvents="none".
+  const duckTouchRef = useRef(false);
+  const pillTouchRef = useRef(false);
+  const onDuckTouch = useCallback((active: boolean) => {
+    duckTouchRef.current = active;
+  }, []);
+  const onPillTouchStart = useCallback(() => { pillTouchRef.current = true; }, []);
+  const onPillTouchEnd = useCallback(() => { pillTouchRef.current = false; }, []);
   // The swipe (prototype v5): horizontal pans only — vertical moves keep
   // their scroll and a motionless tap stays the duck's poke. The handler is
   // read through a ref so the once-created PanResponder never goes stale.
   const onSwipeRef = useRef(onOpenSettings);
   onSwipeRef.current = onOpenSettings;
+  // The wiggle test (issue #43, prototype v4): the pan's dx samples decide
+  // dizzy on release — but only for drags that began on the duck, and a clean
+  // decisive swipe from the duck still navigates (moods never trap nav).
+  const wiggleSamples = useRef<number[]>([]);
   const swipe = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_event, gesture) =>
         Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderGrant: () => {
+        wiggleSamples.current = [];
+      },
+      onPanResponderMove: (_event, gesture) => {
+        if (!duckTouchRef.current || gesture.numberActiveTouches !== 1) return;
+        const samples = wiggleSamples.current;
+        samples.push(gesture.dx);
+        if (samples.length > 40) samples.shift();
+      },
       onPanResponderRelease: (_event, gesture) => {
+        const samples = wiggleSamples.current;
+        const maxAbsDx = samples.reduce((max, dx) => Math.max(max, Math.abs(dx)), 0);
+        if (duckTouchRef.current && isWiggle(countFlips(samples), maxAbsDx)) {
+          petRef.current?.dizzy();
+          return; // a wiggle on the duck is a mood request, never a swipe
+        }
         if (gesture.dx <= -48 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
           onSwipeRef.current();
         }
       },
     }),
   ).current;
+  // The stroll long-hold (prototype v4 ~0.7s): passive touch tracking on the
+  // home surface — no responder is claimed, so the ScrollView and the pan
+  // gesture keep working. Any touch wakes a sleeper first; a hold that
+  // started on the duck or the pill never strolls, and any move cancels.
+  const holdRef = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> | null }>({
+    x: 0, y: 0, timer: null,
+  });
+  const clearHold = useCallback(() => {
+    if (holdRef.current.timer) {
+      clearTimeout(holdRef.current.timer);
+      holdRef.current.timer = null;
+    }
+  }, []);
+  const onBackgroundTouchStart = useCallback((event: GestureResponderEvent) => {
+    petRef.current?.wake();
+    if (duckTouchRef.current || pillTouchRef.current) return;
+    holdRef.current.x = event.nativeEvent.pageX;
+    holdRef.current.y = event.nativeEvent.pageY;
+    clearHold();
+    holdRef.current.timer = setTimeout(() => {
+      holdRef.current.timer = null;
+      petRef.current?.stroll();
+    }, STROLL_HOLD_MS);
+  }, [petRef, clearHold]);
+  const onBackgroundTouchMove = useCallback((event: GestureResponderEvent) => {
+    if (!holdRef.current.timer) return;
+    const { pageX, pageY } = event.nativeEvent;
+    if (Math.abs(pageX - holdRef.current.x) > 12
+      || Math.abs(pageY - holdRef.current.y) > 12) clearHold();
+  }, [clearHold]);
+  const onBackgroundTouchEnd = clearHold;
   return (
     // The mascot is the home screen's center. This group stays the single
     // screen-reader source: the exact count, goal, ratio, and source in
@@ -419,6 +485,17 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
       }}
       {...swipe.panHandlers}
     >
+      {/* Passive touch observer (issue #43): raw touch events only — no
+          responder is claimed, so the pan swipe and the ScrollView keep their
+          behavior untouched. It wakes a sleeper on any touch and times the
+          stroll's background long-hold. An unstyled wrapper keeps the layout
+          identical to the group's own children. */}
+      <View
+        onTouchStart={onBackgroundTouchStart}
+        onTouchMove={onBackgroundTouchMove}
+        onTouchEnd={onBackgroundTouchEnd}
+        onTouchCancel={onBackgroundTouchEnd}
+      >
       {/* Decorative slot: hidden from the accessibility tree (both platforms)
           so the group label stays the screen-reader source. The slot's fixed
           height reserves the poke heart's rise above the pet. The talk box
@@ -432,11 +509,14 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
       >
         <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent} />
         <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
-          size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} />
+          size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} onDuckTouch={onDuckTouch} />
       </View>
       {/* The count and the footprints mark, nothing else. Not a control: the
-          tap affordance routes to #44's stepper and stays inert until then. */}
-      <View style={s.stepsPill}>
+          tap affordance routes to #44's stepper and stays inert until then.
+          Its touch flag keeps the stroll long-hold off the pill (issue #43). */}
+      <View style={s.stepsPill}
+        onTouchStart={onPillTouchStart} onTouchEnd={onPillTouchEnd}
+        onTouchCancel={onPillTouchEnd}>
         <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
           {loaded ? formatNumber(loaded.steps, locale) : '—'}
         </Text>
@@ -444,6 +524,7 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
           name="shoe-print" size={FOOTPRINT_SIZE} color={colors.text}
           accessible={false}
         />
+      </View>
       </View>
     </View>
   );

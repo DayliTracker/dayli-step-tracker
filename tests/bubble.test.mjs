@@ -122,12 +122,16 @@ test('the duck tap target is labeled while the slot keeps it decorative', () => 
 test('mascot events surface their line; the engine fires poke, walk, and celebrate', () => {
   assert.match(engineSource,
     /export type PixelPetEvent = 'poke' \| 'walk' \| 'celebrate' \| 'lead' \| 'homecome'/);
-  // Poke fires from the poke handler itself.
-  assert.match(engineSource, /const handlePoke = useCallback\(\(\) => \{\s*\n\s*onEventRef\.current\?\.\('poke'\)/);
+  // Poke fires from the poke handler itself — after the wake guard (a touch
+  // that woke the sleeper is answered by the startle, not a poke) and the
+  // double-tap branch (issue #43: that tap became a hop).
+  assert.match(engineSource, /const handlePoke = useCallback\(\(\) => \{[\s\S]*?onEventRef\.current\?\.\('poke'\)/);
   // Walk and celebrate fire once per mood entry, from an effect that keys on
   // mood — not the mood machine (tests/today.test.mjs pins that machine as
-  // the first effect keyed on progress alone).
-  assert.match(engineSource, /useEffect\(\(\) => \{\s*\n\s*if \(mood === 'walk' \|\| mood === 'celebrate'\) onEventRef\.current\?\.\(mood\);\s*\n\s*\}, \[mood\]\)/);
+  // the first effect keyed on progress alone). Issue #43: dizzy and stroll
+  // announce through the same effect.
+  assert.match(engineSource,
+    /useEffect\(\(\) => \{\s*\n\s*if \(mood === 'walk' \|\| mood === 'celebrate'[\s\S]*?onEventRef\.current\?\.\(mood\);\s*\n\s*\}, \[mood\]\)/);
   // Today wires the hook through a bumped nonce so repeats still speak.
   const todaySource = appSource.slice(
     appSource.indexOf('function Today('),
