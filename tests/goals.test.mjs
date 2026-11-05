@@ -176,7 +176,7 @@ test('the shell wires goal history: load, per-date goals, validate-then-save', (
   assert.match(appSource, /goalForDate\(goalHistory, localDateKey\(new Date\(\)\)\)/);
   assert.doesNotMatch(appSource, /goalReached\(snapshot, DEFAULT_GOAL\)/);
   // Progress renders each date's own goal.
-  assert.match(appSource, /goalForDate\(goalHistory, localDateKey\(date\)\)/);
+  assert.match(appSource, /goalForDate\(goalHistory, dateKey\)/);
   // The editor validates before applying, and a save refuses without a base.
   assert.match(appSource, /parseGoalInput\(text\)/);
   assert.match(appSource, /if \(result\.kind === 'error'\) \{ setInvalid\(true\); setSavedGoal\(null\); return; \}/);
