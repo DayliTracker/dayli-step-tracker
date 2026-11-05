@@ -752,10 +752,11 @@ const s = StyleSheet.create({
   },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
     fontVariant: typeVariant.tabularNums },
-  // Count + footprints mark on the textless home: baseline-aligned like the
-  // prototype's steps-pill (gap 10, padding 8).
+  // Count + footprints mark on the textless home: one baseline row like the
+  // prototype's steps-pill (row direction, gap 10, padding 8).
   stepsPill: {
-    marginTop: spacing.xl, alignItems: 'baseline', gap: spacing.xl, padding: spacing.lg,
+    marginTop: spacing.xl, flexDirection: 'row', alignItems: 'baseline',
+    gap: spacing.xl, padding: spacing.lg,
   },
   steps: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.regular },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
@@ -786,9 +787,9 @@ const s = StyleSheet.create({
     fontFamily: typeFace.text.bold, textAlign: 'center' },
   list: { gap: spacing.xl, marginTop: spacing.gutter, alignSelf: 'stretch' },
   settingsRow: {
-    minHeight: 70, flexDirection: 'row', alignItems: 'center', padding: spacing.gutter,
-    borderRadius: radius.row, backgroundColor: colors.card, borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: spacing.gutter, borderRadius: radius.row, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
   },
   danger: { color: colors.danger },
   disclosure: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
