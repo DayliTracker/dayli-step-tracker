@@ -138,8 +138,11 @@ test('PixelPet mood machine: walk plays on a rise, celebrate at the goal, both e
     const prevProgress = { current: progress };
     const runEffect = () => {
       let next = null;
-      new Function('progress', 'mood', 'setMood', 'prevProgress', machine[1])(
+      // moodRef mirrors the drive loop's mood, like the component syncing it
+      // each render (issue #43's sleep defer reads it mid-effect).
+      new Function('progress', 'mood', 'setMood', 'prevProgress', 'moodRef', machine[1])(
         progress, mood, (m) => { next = m; }, prevProgress,
+        { get current() { return mood; } },
       );
       return next;
     };
