@@ -35,33 +35,34 @@ const TAB_SELECTED = '#C8EBDD';
 // Text pairs: [name, fg, bg, minRatio, fontSizePx, bold].
 // WCAG 2.1 AA: 4.5:1 normal text; 3:1 large text (>= 24px, or >= 18.66px bold).
 const TEXT_PAIRS = [
-  ['eyebrow on root', '#806A55', ROOT, 4.5, 11, true],        // App.tsx:320
-  ['title on root', '#5B4634', ROOT, 3, 27, true],            // App.tsx:321
-  ['header action on #C8EBDD', '#5B4634', HEADER_ACTION, 4.5, 14, true], // App.tsx:324
-  ['date on root', '#806A55', ROOT, 4.5, 16, false],          // App.tsx:325
-  ['step count on card', '#5B4634', CARD, 3, 40, true],       // App.tsx:339
-  ['steps unit on card', '#806A55', CARD, 4.5, 15, false],    // App.tsx:340
-  ['summary on card', '#5B4634', CARD, 4.5, 16, false],       // App.tsx:341
-  ['muted on card', '#806A55', CARD, 4.5, 13, false],         // App.tsx:343
-  ['goal on card', '#5B4634', CARD, 3, 22, true],             // App.tsx:344
-  ['cheer on card', '#326D52', CARD, 4.5, 15, true],          // App.tsx:338
-  ['progress intro on root', '#806A55', ROOT, 4.5, 16, false],// App.tsx:345
-  ['row title on card', '#5B4634', CARD, 4.5, 16, true],      // App.tsx:354
-  ['row value on card', '#5B4634', CARD, 4.5, 14, true],      // App.tsx:355
-  ['manual action on #F4FBF7', '#326D52', MANUAL_ACTION, 4.5, 14, true], // App.tsx:361
-  ['row subtitle on card', '#806A55', CARD, 4.5, 13, false],  // App.tsx:368
-  ['chevron on card (hidden from AX)', '#806A55', CARD, 4.5, 27, false], // App.tsx:369,250
-  ['danger on card', '#8D3E34', CARD, 4.5, 16, true],         // App.tsx:370
-  ['disclosure on root', '#806A55', ROOT, 4.5, 13, false],    // App.tsx:371
-  ['tab on bar', '#806A55', CARD, 4.5, 15, false],            // App.tsx:384
-  ['selected tab on #C8EBDD', '#5B4634', TAB_SELECTED, 4.5, 15, true],   // App.tsx:385
-  ['language selected on #E8F5EE', '#326D52', LANGUAGE_SELECTED, 4.5, 13, true], // App.tsx:377
+  ['eyebrow on root', '#806A55', ROOT, 4.5, 11, true],
+  ['title on root', '#5B4634', ROOT, 3, 27, true],
+  ['header action on #C8EBDD', '#5B4634', HEADER_ACTION, 4.5, 14, true],
+  // Issue #28 removed the home date line, cheer, and rendered row subtitles;
+  // the hero count and the Progress ring's steps unit now sit on the root.
+  ['step count on root', '#5B4634', ROOT, 3, 40, true],
+  ['steps unit on root', '#806A55', ROOT, 4.5, 15, false],
+  ['summary on card', '#5B4634', CARD, 4.5, 16, false],
+  ['muted on card', '#806A55', CARD, 4.5, 13, false],
+  ['goal on card', '#5B4634', CARD, 3, 22, true],
+  ['progress intro on root', '#806A55', ROOT, 4.5, 16, false],
+  ['row title on card', '#5B4634', CARD, 4.5, 16, true],
+  ['row value on card', '#5B4634', CARD, 4.5, 14, true],
+  ['manual action on #F4FBF7', '#326D52', MANUAL_ACTION, 4.5, 14, true],
+  ['chevron icon on card (hidden from AX)', '#806A55', CARD, 4.5, 27, false],
+  ['danger on card', '#8D3E34', CARD, 4.5, 16, true],
+  ['disclosure on root', '#806A55', ROOT, 4.5, 13, false],
+  ['tab on bar', '#806A55', CARD, 4.5, 15, false],
+  ['selected tab on #C8EBDD', '#5B4634', TAB_SELECTED, 4.5, 15, true],
+  ['language selected on #E8F5EE', '#326D52', LANGUAGE_SELECTED, 4.5, 13, true],
 ];
 
 // Non-text (WCAG 1.4.11, 3:1): the lit ring segment is the progress state cue;
-// its text equivalents (summary + a11y label) carry the exact value too.
+// its text equivalents (a11y label) carry the exact value too. The header gear
+// is the open-settings control's glyph — the button label names it.
 const NON_TEXT_PAIRS = [
-  ['lit ring segment on card', '#5E9B7F', CARD, 3],           // App.tsx:335
+  ['lit ring segment on card', '#5E9B7F', CARD, 3],
+  ['gear icon on #C8EBDD (hidden from AX)', '#5B4634', HEADER_ACTION, 3],
 ];
 
 test('every rendered text pair meets its WCAG 2.1 AA contrast minimum', () => {
