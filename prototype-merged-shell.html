@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE — throwaway, single-file. v2: the textless swipe shell.
+  Question: "does home as bare duck + step number feel right?" (tickets #28/#29/#30
+  direction, grilled 2026-11-05). Decisions locked by the user:
+  1. no tabs — home is the only root; swipe LEFT opens Settings; back button returns
+  2. home is textless: duck centred + step number with a footprints icon, nothing else
+  3. Progress embeds in the Settings scroll below the setting rows (ring + 7 dates)
+  4. animations: idle bob + look-around, walk burst on step tick, celebrate
+     (happy + stars) on goal save/reach, slide transitions between screens
+  Demo steps: tapping the number adds a random amount (phase 1 has no data source;
+  the real app drops the tap affordance).
+  v3 (2026-11-05): settings minimalized — no per-item subtext (subtitles survive
+  in aria-labels), no ring; date rows show date + "N 👣" only, tapping a row opens
+  a stepper popup (current steps, −/+ at 100, save/cancel) that writes the shared
+  per-date store — today's entry IS the home number.
+  v4 (2026-11-05, grilled): talk box above the duck — occasional cute/nudge lines
+  (EN/VI) + event lines on poke/walk/goal/dizzy/stroll; actions: tap = poke,
+  double-tap = hop, long-press duck = sleep (z's), shake/wiggle = dizzy + stars,
+  hold home = stroll across the screen; layout rebalanced — duck anchored high,
+  activity space above.
+  v5 (2026-11-05, grilled): duck leads the navigation — swipe left dashes the
+  duck off the left edge ("this way!") then settings slides in; back (button or
+  mini-duck poke) waddles it back in with a greeting. Mini duck lives in the
+  settings header: poke = heart + follow it home. Swipe hardening: touch-action
+  none on home + pointercancel handling (touch browsers were canceling the pan).
+  No in-app discoverability hint (user call).
+  v6 (2026-11-05): smooth-art redraw — all 9 sprites regenerated as hand-drawn SVG
+  data URIs (same cozy palette, mint scarf, warm-brown outline per craft.md; light
+  top-left). Pixel originals backed up at /tmp/prototype-v5-pixel.html; this answers
+  "does smooth art feel cuter?" — real promotion = mascots-repo work, gated on the
+  user's cute-enough verdict. Real values only: src/tokens.ts palette/
+  type/spacing, src/localization.ts EN+VI copy verbatim, assets/mascots/duck frames
+  embedded as data URLs. Fonts load from Google Fonts (system fallback offline).
+  No persistence — state lives in memory. Double-click to run, delete when done.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — Dayli textless swipe shell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Lexend:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* src/tokens.ts */
+    --canvas: #FAF3E6; --card: #FFFDF8; --border: #E8DDCB; --border-soft: #D8CCB9;
+    --text: #5B4634; --text-muted: #806A55; --accent: #C8EBDD; --accent-soft: #F4FBF7;
+    --accent-text: #326D52; --selection: #E8F5EE; --ring-lit: #5E9B7F; --danger: #8D3E34;
+    /* spacing */
+    --xs: 3px; --sm: 4px; --md: 5px; --lg: 8px; --xl: 10px; --xxl: 12px;
+    --gutter: 14px; --section: 18px; --page: 20px; --screen: 28px;
+    /* radii */
+    --r-control: 14px; --r-tab: 15px; --r-action: 16px; --r-row: 17px; --r-card: 24px;
+    /* type */
+    --nunito-bold: 700 11px 'Nunito', system-ui, sans-serif;
+    --lex: 'Lexend', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: #2E2A26; display: flex; align-items: center; justify-content: center;
+    font-family: var(--lex); color: var(--text); padding: 16px;
+  }
+  .badge {
+    position: fixed; top: 10px; left: 12px; z-index: 99;
+    font: 600 11px/1 var(--lex); letter-spacing: .4px; color: #D9CFC0;
+    background: rgba(0,0,0,.35); border: 1px solid #55504a; border-radius: 999px;
+    padding: 6px 10px; pointer-events: none;
+  }
+  .phone {
+    width: 402px; height: min(874px, 94vh); background: var(--canvas);
+    border-radius: 44px; border: 10px solid #17140f; box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
+  }
+  .statusbar {
+    height: 44px; flex: none; display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 28px 6px; font: 600 14px var(--lex); color: var(--text);
+  }
+  .statusbar .glyphs { letter-spacing: 2px; font-size: 12px; }
+  #app { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  #app::-webkit-scrollbar { display: none; }
+  .content { padding: var(--gutter) var(--page) var(--screen); }
+
+  /* header */
+  .header { min-height: 68px; display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--page); }
+  .eyebrow { font: var(--nunito-bold); font-size: 11px; letter-spacing: 1px; color: var(--text-muted); }
+  .title { font: 800 27px 'Nunito', system-ui, sans-serif; margin-top: var(--xs); }
+  .header-action {
+    min-height: 52px; max-width: 48%; padding: 0 var(--xxl); border: 0; cursor: pointer;
+    border-radius: var(--r-action); background: var(--accent); color: var(--text);
+    font: 700 14px var(--lex); display: flex; align-items: center; justify-content: center;
+  }
+  .header-action:active { filter: brightness(.95); }
+
+  /* today */
+  .date { color: var(--text-muted); font-size: 16px; margin-bottom: var(--xxl); }
+  .card {
+    display: flex; flex-direction: column; align-items: center; padding: var(--page);
+    border-radius: var(--r-card); background: var(--card); border: 1px solid var(--border);
+  }
+  .count { font: 800 40px var(--lex); font-variant-numeric: tabular-nums; }
+  .steps-word { color: var(--text-muted); font-size: 15px; }
+  .pet-slot {
+    margin-top: var(--section); align-self: center; position: relative;
+    height: 320px; /* PET_SIZE 200 + headroom 200*0.6 */
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .pet-slot img.duck {
+    width: 200px; height: 200px; cursor: pointer;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .pet-slot .particle {
+    position: absolute; left: 50%; bottom: 196px; width: 24px; height: 24px;
+    margin-left: -12px; pointer-events: none;
+    animation: rise .9s ease-out forwards;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0); opacity: 0; }
+    25% { opacity: 1; }
+    100% { transform: translateY(-96px); opacity: 0; }
+  }
+  .summary { font-size: 16px; line-height: 24px; text-align: center; margin-top: var(--section); }
+  .divider { height: 1px; align-self: stretch; background: var(--border); margin: var(--section) 0; }
+  .muted { color: var(--text-muted); font-size: 13px; line-height: 20px; margin-top: var(--md); }
+  .goal-line { font: 700 22px var(--lex); font-variant-numeric: tabular-nums; margin: var(--sm) 0; }
+
+  .intro { color: var(--text-muted); font-size: 16px; line-height: 24px; margin: var(--xxl) 0; }
+
+  /* date rows: date + steps, tap to edit */
+  .row {
+    min-height: 60px; padding: var(--gutter); margin-bottom: var(--xl);
+    border-radius: var(--r-row); background: var(--card); border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .row:active { filter: brightness(.97); }
+  .row-top { display: flex; flex-wrap: wrap; gap: var(--lg);
+    justify-content: space-between; align-items: center; }
+  .row-title { font: 700 16px var(--lex); }
+  .row-value { font: 700 14px var(--lex); font-variant-numeric: tabular-nums; }
+  .row-value .steps-icon { font-size: 13px; }
+
+  /* settings */
+  .list { display: flex; flex-direction: column; gap: var(--xl); margin-top: var(--gutter); }
+  .settings-row {
+    min-height: 70px; padding: var(--gutter); cursor: pointer; text-align: left; width: 100%;
+    border-radius: var(--r-row); background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; font-family: var(--lex);
+  }
+  .row-copy { flex: 1; padding-right: var(--lg); }
+  .row-sub { color: var(--text-muted); font-size: 13px; line-height: 19px; margin-top: var(--xs); }
+  .chevron { color: var(--text-muted); font-size: 27px; }
+  .danger { color: var(--danger); }
+  .disclosure { color: var(--text-muted); font-size: 13px; line-height: 20px; margin-top: var(--section); }
+
+  /* goal editor + language */
+  .goal-editor { align-self: stretch; margin-top: var(--section); display: flex; flex-direction: column; }
+  .goal-input {
+    min-height: 48px; margin-top: var(--md); padding: 0 var(--gutter);
+    border-radius: var(--r-control); border: 1px solid var(--border-soft);
+    color: var(--text); font: 700 22px var(--lex); font-variant-numeric: tabular-nums;
+    background: var(--card); outline-color: var(--ring-lit);
+  }
+  .save {
+    min-height: 48px; margin-top: var(--xl); padding: 0 var(--xxl); border: 0; cursor: pointer;
+    border-radius: var(--r-action); background: var(--accent); color: var(--text);
+    font: 700 14px var(--lex); align-self: flex-start;
+  }
+  .error-line { color: var(--danger); font-size: 13px; line-height: 20px; margin-top: var(--md); }
+  .saved-note { color: var(--accent-text); font: 700 13px var(--lex); line-height: 20px;
+    margin-top: var(--md); text-align: center; }
+  .lang-row {
+    min-height: 54px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 var(--gutter); cursor: pointer; width: 100%; text-align: left;
+    border-radius: var(--r-control); border: 1px solid var(--border-soft);
+    background: transparent; font-family: var(--lex);
+  }
+  .lang-row.selected { background: var(--selection); border-color: var(--ring-lit); }
+  .lang-row .row-title { font-size: 16px; }
+  .selected-tag { color: var(--accent-text); font: 700 13px var(--lex); }
+  .persisted { color: var(--text-muted); font-size: 16px; line-height: 24px; }
+
+  /* home (textless): duck high on screen — bubble + hop space above (v4),
+     content anchored top so the bottom stays clean */
+  .home { height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-start; padding-top: 9vh; }
+  .home-slot { margin-top: 0; }
+  .duck { animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  .steps-pill { border: 0; background: none; cursor: pointer; margin-top: var(--lg);
+    display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; font-family: var(--lex); }
+  .steps-pill:active { opacity: .65; }
+  .steps-icon { font-size: 24px; }
+  .particle.star { width: 18px; height: 18px; bottom: 240px; }
+
+  /* the mascot's talk box: floats above the duck, never intercepts touches */
+  .bubble {
+    position: absolute; bottom: 322px; left: 50%; transform: translateX(-50%) translateY(6px);
+    background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+    padding: 7px 12px; max-width: 230px; text-align: center; pointer-events: none;
+    font: 600 13px/1.35 var(--lex); color: var(--text); opacity: 0; z-index: 3;
+    transition: opacity .35s ease, transform .35s ease;
+  }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
+    margin-left: -6px; background: var(--card); border-right: 2px solid var(--border);
+    border-bottom: 2px solid var(--border); transform: rotate(45deg); }
+  .bubble.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* mood states (v4): sleep, dizzy, stroll, hop — all CSS over the real frames */
+  .duck.asleep { animation: breathe 4.5s ease-in-out infinite; filter: brightness(.88); }
+  @keyframes breathe { 50% { transform: translateY(-3px) scale(1.02); } }
+  .duck.hop { animation: hop .55s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes hop { 30% { transform: translateY(-38px); } }
+  .duck.dizzy { animation: wobble .8s ease-in-out 2; }
+  @keyframes wobble { 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+  .duck.strolling { animation: strollX 3.4s ease-in-out; }
+  @keyframes strollX { 0% { transform: translateX(-115px); } 32% { transform: translateX(115px); }
+    64% { transform: translateX(-70px); } 100% { transform: translateX(0); } }
+  .zz { position: absolute; bottom: 300px; font: 800 16px 'Nunito', sans-serif;
+    color: var(--text-muted); pointer-events: none; animation: zzz 1.7s ease-out forwards; }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0) scale(.8); }
+    30% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -70px) scale(1.1); } }
+
+  /* v5: duck leads the way — exits left on swipe, waddles back in on return.
+     touch-action:none keeps horizontal pans in JS (touch browsers were
+     pointercancel-ing the swipe into scroll capture). */
+  .home { touch-action: none; }
+  .duck.lead-out { animation: leadOut .45s ease-in forwards; }
+  @keyframes leadOut { to { transform: translateX(-170px); } }
+  .duck.arrive { animation: leadIn .6s ease-out; }
+  @keyframes leadIn { from { transform: translateX(-170px); } to { transform: translateX(0); } }
+
+  /* mini duck on the settings header: poke it and it brings you home */
+  .header-side { display: flex; align-items: center; gap: 8px; }
+  .mini-wrap { position: relative; }
+  .mini-duck { width: 44px; height: 44px; cursor: pointer;
+    user-select: none; -webkit-user-drag: none; }
+  .mini-wrap .particle { width: 16px; height: 16px; bottom: 34px; }
+  /* screen slide transitions */
+  .slide-in-right { animation: slideInRight .3s ease-out; }
+  .slide-in-left { animation: slideInLeft .3s ease-out; }
+  @keyframes slideInRight { from { transform: translateX(70px); opacity: 0; } }
+  @keyframes slideInLeft { from { transform: translateX(-70px); opacity: 0; } }
+
+  /* alert preview */
+  .overlay { position: absolute; inset: 0; z-index: 50; background: rgba(0,0,0,.28);
+    display: flex; align-items: center; justify-content: center; padding: 40px; }
+  .alert-card { background: rgba(250,243,230,.98); border-radius: 18px; padding: 20px 18px;
+    width: 280px; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .alert-title { font: 800 17px 'Nunito', system-ui, sans-serif; text-align: center; }
+  .alert-msg { font-size: 13px; line-height: 19px; text-align: center; margin: 10px 0 16px; }
+  .alert-actions { display: flex; justify-content: space-around; }
+  .alert-btn { border: 0; background: none; cursor: pointer; color: var(--accent-text);
+    font: 700 15px var(--lex); padding: 6px 12px; }
+
+  /* step editor popup (v3) */
+  .editor { background: rgba(250,243,230,.98); border-radius: 18px; padding: 20px 18px;
+    width: 300px; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .editor-count { font-size: 32px; min-width: 110px; text-align: center; }
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 18px;
+    margin: 14px 0 10px; }
+  .step-btn { width: 52px; height: 52px; border-radius: 16px; border: 1px solid var(--border-soft);
+    background: var(--accent); cursor: pointer; font: 800 26px var(--lex); color: var(--text);
+    display: flex; align-items: center; justify-content: center; user-select: none; }
+  .step-btn:active { filter: brightness(.95); }
+</style>
+</head>
+<body>
+<div class="badge">PROTOTYPE v6 · smooth-art duck · throwaway</div>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span class="glyphs">●●● ⌁ ▮</span></div>
+  <div id="app"></div>
+  <div id="overlay"></div>
+</div>
+<script>
+'use strict';
+
+/* ---- copy: src/localization.ts verbatim (EN + VI) ---- */
+const english = {
+  todayTitle: 'Today', progressTitle: 'Progress', settingsTitle: 'Settings', steps: 'steps',
+  goal: 'Daily goal',
+  sourceUnavailable: 'Step source is not available in this shell.',
+  todayLoading: 'Loading today’s steps…',
+  todayEmpty: 'No steps recorded yet today.',
+  todayError: 'Today’s steps could not be loaded.',
+  ratioOfGoal: 'of goal', goalReached: 'Goal reached!',
+  sourceLabel: 'Source', sourceHealth: 'Health', sourceManual: 'Manual',
+  stepsUnavailable: 'Your step total will appear when step data is connected.',
+  progressIntro: 'Today and your previous six local days.', dateToday: 'Today',
+  addManualTotal: 'Add manual total',
+  manualPreviewTitle: 'Manual total',
+  manualPreviewMessage: 'Manual entry for a date arrives in a later phase. Nothing was saved.',
+  goalTitle: 'Daily step goal', languageTitle: 'Language', healthTitle: 'Health access',
+  clearTitle: 'Clear app data', goalSubtitle: 'Current default: 8,000 steps',
+  languageSubtitle: 'Choose a display language',
+  healthSubtitle: 'Health access settings',
+  clearSubtitle: 'Confirmation preview only. Nothing will be deleted.',
+  dataDisclosure: 'Your data stays on this device and may be lost if you uninstall the app or replace your device.',
+  goalInputLabel: 'Steps per day', goalPlaceholder: '8000',
+  goalSave: 'Save goal',
+  goalSaved: 'Goal saved. It applies from today; past days keep their goals.',
+  goalInvalid: 'Enter a whole number from 1 to 100,000.',
+  goalCurrent: 'Current goal',
+  goalStorageError: 'Your goal could not be read or saved on this device.',
+  languagePersisted: 'Your choice is saved on this device and applies until you change it.',
+  languageDevice: 'Use device language',
+  languageStorageError: 'Your language settings could not be read or saved on this device.',
+  healthLater: 'Health controls will be added later. This shell does not request or change permissions.',
+  clearConfirmTitle: 'Clear app data?',
+  clearConfirmMessage: 'This is a preview only. No app data will be cleared in this phase.',
+  cancel: 'Cancel', gotIt: 'Got it', english: 'English', vietnamese: 'Tiếng Việt',
+  selected: 'Selected', openSettings: 'Open Settings', backToSettings: 'Back to Settings',
+  backToToday: 'Back to Today', backToProgress: 'Back to Progress',
+};
+const vietnamese = {
+  todayTitle: 'Hôm nay', progressTitle: 'Tiến độ', settingsTitle: 'Cài đặt', steps: 'bước',
+  goal: 'Mục tiêu hằng ngày',
+  sourceUnavailable: 'Nguồn dữ liệu bước chân chưa có trong phiên bản này.',
+  todayLoading: 'Đang tải số bước hôm nay…',
+  todayEmpty: 'Hôm nay chưa ghi nhận bước chân nào.',
+  todayError: 'Không thể tải số bước hôm nay.',
+  ratioOfGoal: 'của mục tiêu', goalReached: 'Hoàn thành mục tiêu!',
+  sourceLabel: 'Nguồn', sourceHealth: 'Sức khỏe', sourceManual: 'Thủ công',
+  stepsUnavailable: 'Tổng số bước sẽ hiển thị khi dữ liệu được kết nối.',
+  progressIntro: 'Hôm nay và sáu ngày gần nhất theo giờ địa phương.', dateToday: 'Hôm nay',
+  addManualTotal: 'Thêm tổng thủ công',
+  manualPreviewTitle: 'Tổng thủ công',
+  manualPreviewMessage: 'Nhập thủ công cho một ngày sẽ có trong giai đoạn sau. Chưa có gì được lưu.',
+  goalTitle: 'Mục tiêu bước chân', languageTitle: 'Ngôn ngữ',
+  healthTitle: 'Quyền truy cập Sức khỏe', clearTitle: 'Xóa dữ liệu ứng dụng',
+  goalSubtitle: 'Mặc định hiện tại: 8.000 bước',
+  languageSubtitle: 'Chọn ngôn ngữ hiển thị',
+  healthSubtitle: 'Cài đặt quyền truy cập Sức khỏe',
+  clearSubtitle: 'Chỉ xem trước xác nhận. Không có dữ liệu nào bị xóa.',
+  dataDisclosure: 'Dữ liệu chỉ lưu trên thiết bị này và có thể mất khi gỡ ứng dụng hoặc đổi thiết bị.',
+  goalInputLabel: 'Số bước mỗi ngày', goalPlaceholder: '8000',
+  goalSave: 'Lưu mục tiêu',
+  goalSaved: 'Đã lưu mục tiêu. Áp dụng từ hôm nay; các ngày trước giữ nguyên mục tiêu của chúng.',
+  goalInvalid: 'Nhập số nguyên từ 1 đến 100.000.',
+  goalCurrent: 'Mục tiêu hiện tại',
+  goalStorageError: 'Không thể đọc hoặc lưu mục tiêu trên thiết bị này.',
+  languagePersisted: 'Lựa chọn được lưu trên thiết bị này và có hiệu lực đến khi bạn thay đổi.',
+  languageDevice: 'Dùng ngôn ngữ của thiết bị',
+  languageStorageError: 'Không thể đọc hoặc lưu cài đặt ngôn ngữ trên thiết bị này.',
+  healthLater: 'Cài đặt quyền Sức khỏe sẽ có sau. Phiên bản này không yêu cầu hoặc thay đổi quyền.',
+  clearConfirmTitle: 'Xóa dữ liệu ứng dụng?',
+  clearConfirmMessage: 'Đây chỉ là màn hình xem trước. Dữ liệu sẽ không bị xóa trong giai đoạn này.',
+  cancel: 'Hủy', gotIt: 'Đã hiểu', english: 'English', vietnamese: 'Tiếng Việt',
+  selected: 'Đã chọn', openSettings: 'Mở Cài đặt', backToSettings: 'Quay lại Cài đặt',
+  backToToday: 'Quay lại Hôm nay', backToProgress: 'Quay lại Tiến độ',
+};
+const COPIES = { en: english, vi: vietnamese };
+
+/* ---- state (memory only, no persistence) ---- */
+const S = {
+  screen: 'today',        // today | settings | goal | language | health
+  deviceLocale: 'en',
+  override: null,         // null = use device language
+  goalHistory: {},        // 'YYYY-MM-DD' -> whole number (today's entry only, per-date)
+  goalInput: '8000', goalInvalid: false, goalSaved: false,
+  alert: null,            // { title, message, actions: [{label, fn}] }
+  dateSteps: {},          // per-date demo step totals — the store rows and home share
+  editor: null,           // { key, value } while the step popup is open
+  lastShown: null, celebratedGoal: null, pendingCelebrate: false, lastDir: null,
+};
+const todayKey = () => dateKey(new Date());
+const stepsFor = (key) => (key in S.dateSteps) ? S.dateSteps[key] : null;
+const copy = () => COPIES[S.override ?? S.deviceLocale];
+const localeTag = () => (S.override ?? S.deviceLocale) === 'vi' ? 'vi-VN' : 'en-US';
+const fmt = (n) => n.toLocaleString(localeTag());
+const dateKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const DEFAULT_GOAL = 8000;
+/** carry-forward per-date goal (src/goals.ts semantics) */
+function goalForDate(key) {
+  const keys = Object.keys(S.goalHistory).sort();
+  let goal = DEFAULT_GOAL;
+  for (const k of keys) if (k <= key) goal = S.goalHistory[k];
+  return goal;
+}
+const lastSeven = () => Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(); d.setDate(d.getDate() - i); return d;
+});
+const ROW_FMT = { weekday: 'short', month: 'short', day: 'numeric' };
+
+/* ---- duck: real frames, 2-frame blink + poke heart (PixelPet behaviour) ---- */
+const DUCK = {
+  idle: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(0%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2241%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2047%20106)%22%2F%3E%0A%20%20%3Crect%20x%3D%2266%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2072%20106)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2245.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2273%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2271.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Cpath%20d%3D%22M51%2C56%20Q60%2C52.5%2069%2C56%20Q66%2C64.5%2060%2C64.5%20Q54%2C64.5%2051%2C56%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M53.5%2C60%20Q60%2C62.6%2066.5%2C60%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  blink: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(0%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2241%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2047%20106)%22%2F%3E%0A%20%20%3Crect%20x%3D%2266%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2072%20106)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cpath%20d%3D%22M42%2C49%20Q47%2C53.5%2052%2C49%22%20fill%3D%22none%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%3Cpath%20d%3D%22M68%2C49%20Q73%2C53.5%2078%2C49%22%20fill%3D%22none%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M51%2C56%20Q60%2C52.5%2069%2C56%20Q66%2C64.5%2060%2C64.5%20Q54%2C64.5%2051%2C56%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M53.5%2C60%20Q60%2C62.6%2066.5%2C60%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  look: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(0%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2241%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2047%20106)%22%2F%3E%0A%20%20%3Crect%20x%3D%2266%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2072%20106)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2248.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%0A%20%20%20%20%20%3Ccircle%20cx%3D%2276%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2274.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Cpath%20d%3D%22M51%2C56%20Q60%2C52.5%2069%2C56%20Q66%2C64.5%2060%2C64.5%20Q54%2C64.5%2051%2C56%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M53.5%2C60%20Q60%2C62.6%2066.5%2C60%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  happy: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(0%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2241%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2047%20106)%22%2F%3E%0A%20%20%3Crect%20x%3D%2266%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2072%20106)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cpath%20d%3D%22M42%2C50%20Q47%2C44%2052%2C50%22%20fill%3D%22none%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%3Cpath%20d%3D%22M68%2C50%20Q73%2C44%2078%2C50%22%20fill%3D%22none%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%3Cpath%20d%3D%22M52%2C55.5%20Q60%2C53.5%2068%2C55.5%20Q66%2C67.5%2060%2C67.5%20Q54%2C67.5%2052%2C55.5%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%3Cpath%20d%3D%22M55%2C61.5%20Q60%2C64.5%2065%2C61.5%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  surprised: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(0%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2241%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2047%20106)%22%2F%3E%0A%20%20%3Crect%20x%3D%2266%22%20y%3D%22102%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(0%2072%20106)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2249%22%20r%3D%226.2%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2249%22%20r%3D%222.7%22%20fill%3D%22%2340342B%22%2F%3E%0A%20%20%20%20%20%3Ccircle%20cx%3D%2273%22%20cy%3D%2249%22%20r%3D%226.2%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%2340342B%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2273%22%20cy%3D%2249%22%20r%3D%222.7%22%20fill%3D%22%2340342B%22%2F%3E%0A%20%20%20%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2261%22%20rx%3D%225%22%20ry%3D%226%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2262.5%22%20rx%3D%222.4%22%20ry%3D%223%22%20fill%3D%22%23D9832E%22%2F%3E%3C%2Fsvg%3E',
+  walkA: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(3%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2233%22%20y%3D%2299%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(-12%2039%20103)%22%2F%3E%0A%20%20%3Crect%20x%3D%2268%22%20y%3D%22101%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(14%2074%20105)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2245.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2273%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2271.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Cpath%20d%3D%22M51%2C56%20Q60%2C52.5%2069%2C56%20Q66%2C64.5%2060%2C64.5%20Q54%2C64.5%2051%2C56%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M53.5%2C60%20Q60%2C62.6%2066.5%2C60%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  walkB: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22bg1%22%20cx%3D%2238%25%22%20cy%3D%2230%25%22%20r%3D%2278%25%22%3E%0A%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFFAEE%22%2F%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23FFF6E3%22%2F%3E%0A%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F3E7CE%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22rotate(-3%2060%2074)%22%3E%0A%20%20%3Cpath%20d%3D%22M32%2C72%20C30%2C58%2034%2C42%2046%2C34%20C52%2C29%2068%2C29%2074%2C34%20C86%2C42%2090%2C58%2088%2C72%0A%20%20%20%20C96%2C78%2096%2C92%2088%2C98%20C80%2C106%2040%2C106%2032%2C98%20C24%2C92%2024%2C78%2032%2C72%20Z%22%0A%20%20%20%20fill%3D%22url(%23bg1)%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2260%22%20cy%3D%2295%22%20rx%3D%2219%22%20ry%3D%226.5%22%20fill%3D%22%23F2E2C4%22%20opacity%3D%22.9%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M84%2C72%20C93%2C74%2095%2C84%2088%2C91%20C83%2C87%2081%2C78%2084%2C72%20Z%22%20fill%3D%22%23F2E2C4%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M58%2C30%20C55.5%2C21.5%2066%2C18.5%2068%2C25.5%20C63.5%2C24%2061.5%2C27%2063%2C31.5%22%20fill%3D%22none%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M34%2C68%20Q60%2C78.5%2086%2C68%20Q86.5%2C76.5%2060%2C84.5%20Q33.5%2C76.5%2034%2C68%20Z%22%20fill%3D%22%23B7E0CC%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222.4%22%2F%3E%0A%20%20%3Crect%20x%3D%2236.5%22%20y%3D%2275%22%20width%3D%2210.5%22%20height%3D%2216%22%20rx%3D%224.5%22%20fill%3D%22%238FCBB2%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(6%2042%2078)%22%2F%3E%3Crect%20x%3D%2242%22%20y%3D%22101%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(12%2048%20105)%22%2F%3E%0A%20%20%3Crect%20x%3D%2259%22%20y%3D%2299%22%20width%3D%2213%22%20height%3D%228.5%22%20rx%3D%224.2%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%20transform%3D%22rotate(-14%2065%20103)%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2240%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Cellipse%20cx%3D%2280%22%20cy%3D%2258.5%22%20rx%3D%225%22%20ry%3D%223.2%22%20fill%3D%22%23F5BFAE%22%2F%3E%3Ccircle%20cx%3D%2247%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2245.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2273%22%20cy%3D%2249%22%20r%3D%224.6%22%20fill%3D%22%2340342B%22%2F%3E%3Ccircle%20cx%3D%2271.4%22%20cy%3D%2247.3%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Cpath%20d%3D%22M51%2C56%20Q60%2C52.5%2069%2C56%20Q66%2C64.5%2060%2C64.5%20Q54%2C64.5%2051%2C56%20Z%22%20fill%3D%22%23F6A94C%22%20stroke%3D%22%235B4634%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M53.5%2C60%20Q60%2C62.6%2066.5%2C60%22%20fill%3D%22none%22%20stroke%3D%22%23D9832E%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E',
+  heart: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M12%2021%20C5%2015%202%2011%202%207.5%20C2%204.4%204.4%202%207.5%202%20C9.4%202%2011.1%203%2012%204.6%20C12.9%203%2014.6%202%2016.5%202%20C19.6%202%2022%204.4%2022%207.5%20C22%2011%2019%2015%2012%2021%20Z%22%20fill%3D%22%23F28BA0%22%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%228%22%20cy%3D%227%22%20r%3D%221.6%22%20fill%3D%22%23FFFFFF%22%20opacity%3D%22.85%22%2F%3E%3C%2Fsvg%3E',
+  star: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M12%202.5%20L14.6%208.6%20L21.2%209.2%20L16.3%2013.6%20L17.7%2020.1%20L12%2016.7%20L6.3%2020.1%20L7.7%2013.6%20L2.8%209.2%20L9.4%208.6%20Z%22%0A%20%20%20%20%20%20fill%3D%22%23FFD65A%22%20stroke%3D%22%23FFD65A%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%229.5%22%20cy%3D%229%22%20r%3D%221.4%22%20fill%3D%22%23FFFFFF%22%20opacity%3D%22.9%22%2F%3E%3C%2Fsvg%3E',
+};
+/* The mascot's voice (v4): short bilingual lines. The bubble is the duck
+   talking, never UI text — home stays textless otherwise. */
+const LINES = {
+  en: {
+    cute: ['quack. just quack.', 'nice to see you', 'you smell like steps',
+      'i napped so hard', 'daydreaming of bread'],
+    nudge: ['let’s walk a bit!', 'a tiny stroll?', 'my legs are ready',
+      'steps won’t count themselves', 'waddle with me?'],
+    poke: ['hey! that tickles', 'oi!', 'again! again!'],
+    walk: ['look at me gooo', 'waddle waddle', 'so speedy'],
+    cheer: ['WE DID IT!', 'goal smashed!', 'best human ever'],
+    dizzy: ['woaaah the room spins'],
+    stroll: ['walk walk walk'],
+    lead: ['this way!', 'follow me!', 'settings time!'],
+    homecome: ['home again!', 'missed this spot', 'back to business'],
+  },
+  vi: {
+    cute: ['quack. chỉ quack thôi.', 'thấy bạn vui quá', 'bạn thơm mùi bước chân',
+      'giấc ngủ ngon quá', 'mơ về bánh mì'],
+    nudge: ['đi bộ chút nhé!', 'đi dạo nhỏ thôi?', 'chân tui sẵn sàng',
+      'bước chân tự đi được đâu', 'đi với tui nào?'],
+    poke: ['nhi! ngứa đó', 'ơi!', 'làm nữa đi!'],
+    walk: ['nhìn tui đi nào', 'cộc cộc cộc', 'nhanh dữ thần'],
+    cheer: ['LÀM ĐƯỢC RỒI!', 'phá đảo mục tiêu!', 'bạn number one'],
+    dizzy: ['woaaah đầu quay quá'],
+    stroll: ['đi bộ đi bộ bộ'],
+    lead: ['đi hướng này!', 'theo tui!', 'đến cài đặt nào!'],
+    homecome: ['về nhà rồi!', 'thường chỗ này quá', 'làm việc thôi'],
+  },
+};
+const pick = (cat) => {
+  const lines = LINES[(S.override ?? S.deviceLocale) === 'vi' ? 'vi' : 'en'][cat];
+  return lines[Math.floor(Math.random() * lines.length)];
+};
+let bubbleTimer = null;
+function showBubble(text, holdMs = 4000) {
+  const el = document.getElementById('duck-bubble');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => el.classList.remove('show'), holdMs);
+}
+
+let duckTimers = [];
+function clearDuckTimers() {
+  duckTimers.forEach((t) => { clearInterval(t); clearTimeout(t); });
+  duckTimers = [];
+}
+
+/* The mood machine: idle (the bob is CSS) with blink + look-around ambience;
+   poke, walk, and celebrate take priority and suspend the ambience. Frames
+   are the real PixelPet renders — the same swaps the RN engine makes. */
+/* The mood machine (v4): idle (CSS bob) with blink + look-around ambience and
+   unprompted chatter. Moods: poke (tap), hop (double-tap), sleep (long-press),
+   dizzy (shake/wiggle), stroll (hold home), walk (step tick), celebrate
+   (goal). Priority: a busy duck ignores new requests; sleep naps alone until
+   poked. Frames are the real PixelPet renders — same swaps the RN engine makes. */
+function mountDuck() {
+  const img = document.getElementById('duck');
+  if (!img) return;
+  clearDuckTimers();
+  let mood = 'idle';
+  let zzInterval = null;
+  const settled = (ms) => duckTimers.push(setTimeout(() => {
+    mood = 'idle'; img.src = DUCK.idle;
+  }, ms));
+  const heartBurst = () => {
+    const heart = document.createElement('img');
+    heart.src = DUCK.heart; heart.className = 'particle';
+    img.parentElement.appendChild(heart);
+    duckTimers.push(setTimeout(() => heart.remove(), 950));
+  };
+  duckTimers.push(setInterval(() => {                    // blink
+    if (mood !== 'idle') return;
+    img.src = DUCK.blink;
+    duckTimers.push(setTimeout(() => { if (mood === 'idle') img.src = DUCK.idle; }, 130));
+  }, 2800 + Math.random() * 1600));
+  duckTimers.push(setInterval(() => {                    // look around
+    if (mood !== 'idle') return;
+    img.src = DUCK.look;
+    duckTimers.push(setTimeout(() => { if (mood === 'idle') img.src = DUCK.idle; }, 700));
+  }, 9000 + Math.random() * 5000));
+  const chat = () => {                                   // unprompted talking
+    if (!img.isConnected) return;
+    if (mood === 'idle') showBubble(pick(Math.random() < 0.5 ? 'cute' : 'nudge'));
+    duckTimers.push(setTimeout(chat, 18000 + Math.random() * 7000));
+  };
+  duckTimers.push(setTimeout(chat, 9000 + Math.random() * 6000));
+
+  const startDizzy = () => {                             // shake → dizzy + stars
+    if (mood !== 'idle') return;
+    mood = 'dizzy';
+    img.classList.add('dizzy');
+    img.src = DUCK.surprised;
+    showBubble(pick('dizzy'));
+    for (let i = 0; i < 4; i++) {
+      duckTimers.push(setTimeout(() => {
+        const star = document.createElement('img');
+        star.src = DUCK.star; star.className = 'particle star';
+        star.style.left = (30 + i * 14) + '%';
+        star.style.bottom = (250 + (i % 2) * 22) + 'px';
+        img.parentElement.appendChild(star);
+        duckTimers.push(setTimeout(() => star.remove(), 950));
+      }, i * 120));
+    }
+    duckTimers.push(setTimeout(() => img.classList.remove('dizzy'), 1600));
+    settled(1600);
+  };
+  window.__duckShake = startDizzy;
+
+  const wake = () => {                                   // from sleep: surprised + heart
+    clearInterval(zzInterval);
+    mood = 'poke';
+    img.classList.remove('asleep');
+    img.src = DUCK.surprised;
+    heartBurst();
+    settled(650);
+  };
+
+  let pressTimer = null;
+  let moved = 0;
+  let lastTap = 0;
+  let shakeFlips = [];
+  img.onpointerdown = (e) => {
+    if (mood === 'sleep') { wake(); return; }            // any touch wakes the nap
+    if (mood !== 'idle') return;
+    moved = 0; shakeFlips = [];
+    let lastX = e.clientX, lastDx = 0;
+    pressTimer = setTimeout(() => {                      // long-press → nap
+      if (mood !== 'idle' || moved > 12) return;
+      mood = 'sleep';
+      img.classList.add('asleep');
+      zzInterval = setInterval(() => {
+        const z = document.createElement('span');
+        z.className = 'zz'; z.textContent = 'z';
+        z.style.left = (46 + Math.random() * 14) + '%';
+        img.parentElement.appendChild(z);
+        duckTimers.push(setTimeout(() => z.remove(), 1700));
+      }, 900);
+      duckTimers.push(zzInterval);
+      duckTimers.push(setTimeout(() => {                 // naps end on their own
+        if (mood === 'sleep') {
+          clearInterval(zzInterval);
+          mood = 'idle';
+          img.classList.remove('asleep');
+          img.src = DUCK.idle;
+        }
+      }, 12000));
+    }, 1200);
+    duckTimers.push(pressTimer);
+    img.onpointermove = (ev) => {                        // wiggle detection
+      moved = Math.max(moved, Math.abs(ev.clientX - e.clientX));
+      const dx = ev.clientX - lastX; lastX = ev.clientX;
+      if (Math.abs(dx) > 10) {
+        const dir = Math.sign(dx);
+        if (lastDx !== 0 && dir !== lastDx) shakeFlips.push(Date.now());
+        lastDx = dir;
+      }
+      shakeFlips = shakeFlips.filter((t) => Date.now() - t < 900);
+      if (shakeFlips.length >= 4) {
+        clearTimeout(pressTimer);
+        img.onpointermove = null;
+        startDizzy();
+      }
+    };
+  };
+  const release = () => { clearTimeout(pressTimer); img.onpointermove = null; };
+  img.onpointerleave = release;
+  img.onpointerup = () => {
+    release();
+    if (moved > 12 || mood === 'sleep' || mood !== 'idle') return;
+    const now = Date.now();
+    if (now - lastTap < 320) {                           // double-tap → hop
+      lastTap = 0;
+      mood = 'hop';
+      img.classList.add('hop');
+      img.src = DUCK.happy;
+      heartBurst();
+      duckTimers.push(setTimeout(() => img.classList.remove('hop'), 600));
+      settled(650);
+      return;
+    }
+    lastTap = now;                                       // single tap → poke
+    mood = 'poke';
+    img.src = DUCK.surprised;
+    heartBurst();
+    showBubble(pick('poke'));
+    settled(650);
+  };
+
+  window.__duckLead = () => {                            // swipe-left exit: dash off left edge
+    if (!img.isConnected || mood !== 'idle') return false;
+    mood = 'lead';
+    let flip = false;
+    const stride = setInterval(() => {
+      img.src = flip ? DUCK.walkB : DUCK.walkA; flip = !flip;
+    }, 140);
+    duckTimers.push(stride);
+    duckTimers.push(setTimeout(() => clearInterval(stride), 420));
+    img.classList.add('lead-out');
+    showBubble(pick('lead'), 1400);
+    return true;
+  };
+  window.__duckArrive = () => {                          // return home: waddle in from the left
+    if (!img.isConnected) return;
+    mood = 'arrive';
+    img.classList.remove('lead-out');
+    img.classList.add('arrive');
+    let flip = false;
+    const stride = setInterval(() => {
+      img.src = flip ? DUCK.walkB : DUCK.walkA; flip = !flip;
+    }, 160);
+    duckTimers.push(stride);
+    duckTimers.push(setTimeout(() => {
+      clearInterval(stride);
+      img.classList.remove('arrive');
+      img.src = DUCK.idle;
+    }, 620));
+    showBubble(pick('homecome'), 2600);
+    duckTimers.push(setTimeout(() => { mood = 'idle'; img.src = DUCK.idle; }, 700));
+  };
+  window.__duckWalk = () => {                            // demo step tick → walk burst
+    if (!img.isConnected || mood !== 'idle') return;
+    mood = 'walk';
+    let flip = false;
+    const stride = setInterval(() => {
+      img.src = flip ? DUCK.walkB : DUCK.walkA; flip = !flip;
+    }, 180);
+    duckTimers.push(stride);
+    duckTimers.push(setTimeout(() => clearInterval(stride), 1400));
+    showBubble(pick('walk'));
+    settled(1500);
+  };
+  window.__duckCelebrate = () => {                       // goal → happy + stars + cheer
+    if (!img.isConnected) return;
+    mood = 'celebrate';
+    img.src = DUCK.happy;
+    showBubble(pick('cheer'), 4500);
+    for (let i = 0; i < 5; i++) {
+      duckTimers.push(setTimeout(() => {
+        const star = document.createElement('img');
+        star.src = DUCK.star; star.className = 'particle star';
+        star.style.left = (18 + Math.random() * 64) + '%';
+        img.parentElement.appendChild(star);
+        duckTimers.push(setTimeout(() => star.remove(), 950));
+      }, i * 160));
+    }
+    settled(1700);
+  };
+  window.__duckStroll = () => {                          // hold home → stroll across
+    if (!img.isConnected || mood !== 'idle') return;
+    mood = 'stroll';
+    let flip = false;
+    const stride = setInterval(() => {
+      img.src = flip ? DUCK.walkB : DUCK.walkA; flip = !flip;
+    }, 200);
+    duckTimers.push(stride);
+    duckTimers.push(setTimeout(() => clearInterval(stride), 3400));
+    img.classList.add('strolling');
+    showBubble(pick('stroll'), 3500);
+    duckTimers.push(setTimeout(() => {
+      img.classList.remove('strolling');
+      img.src = DUCK.idle;
+    }, 3400));
+    settled(3500);
+  };
+  // a real device's shake lands in the same dizzy handler (iOS asks for
+  // motion permission; desktop testing uses the wiggle gesture)
+  if (!window.__motionHooked) {
+    window.__motionHooked = true;
+    window.addEventListener('devicemotion', (e) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a || a.x == null) return;
+      if (Math.abs(a.x) > 15) window.__duckShake?.();
+    });
+  }
+}
+
+function todayScreen() {
+  return `<div class="content home">
+    <div class="pet-slot home-slot">
+      <div id="duck-bubble" class="bubble"></div>
+      <img id="duck" class="duck" src="${DUCK.idle}" alt="PixelPet duck">
+    </div>
+    <button class="steps-pill" onclick="addSteps()" aria-label="steps — tap for demo steps">
+      <span class="count" id="steps-num">${stepsFor(todayKey()) === null ? '—' : fmt(stepsFor(todayKey()))}</span>
+      <span class="steps-icon">👣</span>
+    </button>
+  </div>`;
+}
+function settingsScreen() {
+  const t = copy();
+  const hasCustom = Object.keys(S.goalHistory).length > 0;
+  const goalSubtitle = hasCustom
+    ? `${t.goalCurrent}: ${fmt(goalForDate(dateKey(new Date())))} ${t.steps}` : t.goalSubtitle;
+  // Minimal text (v3 user call): titles only; the old subtitles survive for
+  // screen readers in the aria-label.
+  const settingRows = [
+    { title: t.goalTitle, sub: goalSubtitle, fn: 'go("goal")' },
+    { title: t.languageTitle, sub: t.languageSubtitle, fn: 'go("language")' },
+    { title: t.healthTitle, sub: t.healthSubtitle, fn: 'go("health")' },
+    { title: t.clearTitle, sub: t.clearSubtitle, fn: 'clearPreview()', danger: true },
+  ];
+  // Date rows (v3): date + "N 👣" only — no goal line, no source line, no ring.
+  // Tapping a row opens the stepper popup for that date.
+  const dateRows = lastSeven().map((d) => {
+    const label = dateKey(d) === todayKey() ? t.dateToday : d.toLocaleDateString(localeTag(), ROW_FMT);
+    const steps = stepsFor(dateKey(d));
+    return `<div class="row" onclick="openEditor('${dateKey(d)}')" role="button"
+      aria-label="${label}, ${steps === null ? '—' : fmt(steps)} ${t.steps}">
+      <div class="row-top"><span class="row-title">${label}</span>
+        <span class="row-value">${steps === null ? '—' : fmt(steps)} <span class="steps-icon">👣</span></span></div>
+    </div>`;
+  }).join('');
+  return `<div class="content">
+    <div class="header">
+      <div><div class="eyebrow">DAYLI STEP TRACKER</div><div class="title">${t.settingsTitle}</div></div>
+      <div class="header-side">
+        <button class="header-action" onclick="goHome()">${t.backToToday}</button>
+        <span class="mini-wrap"><img class="mini-duck" src="${DUCK.idle}" alt="duck"
+          onclick="miniDuckPoke()"></span>
+      </div>
+    </div>
+    <div class="list">${settingRows.map((r) => `
+      <button class="settings-row" onclick="${r.fn}" aria-label="${r.title}. ${r.sub}">
+        <span class="row-copy"><span class="row-title ${r.danger ? 'danger' : ''}">${r.title}</span></span>
+        <span class="chevron">›</span>
+      </button>`).join('')}
+    </div>
+    <div class="divider"></div>
+    <div class="intro">${t.progressIntro}</div>
+    ${dateRows}
+    <div class="disclosure">${t.dataDisclosure}</div>
+  </div>`;
+}
+function goalScreen() {
+  const t = copy();
+  const current = goalForDate(dateKey(new Date()));
+  return `<div class="content">
+    ${header(t.goalTitle, t.backToSettings, 'go("settings","back")')}
+    <div class="card" style="align-items:stretch">
+      <div class="goal-line">${fmt(current)} ${t.steps}</div>
+      <div class="muted" style="margin-top:0">${t.goalInputLabel}</div>
+      <input id="goal-input" class="goal-input" inputmode="numeric" value="${S.goalInput}"
+        placeholder="${t.goalPlaceholder}" oninput="S.goalInput=this.value; S.goalSaved=false">
+      <button class="save" onclick="saveGoal()">${t.goalSave}</button>
+      ${S.goalInvalid ? `<div class="error-line">${t.goalInvalid}</div>` : ''}
+      ${S.goalSaved ? `<div class="saved-note">${t.goalSaved}</div>` : ''}
+    </div>
+  </div>`;
+}
+function languageScreen() {
+  const t = copy();
+  const sel = S.override;
+  const rows = [
+    { v: null, label: t.languageDevice },
+    { v: 'en', label: t.english },
+    { v: 'vi', label: t.vietnamese },
+  ];
+  return `<div class="content">
+    ${header(t.languageTitle, t.backToSettings, 'go("settings","back")')}
+    <div class="card" style="align-items:stretch">
+      <div class="persisted">${t.languagePersisted}</div>
+      <div class="list" style="margin-top:var(--xl)">${rows.map((r) => `
+        <button class="lang-row ${sel === r.v ? 'selected' : ''}" onclick="setLanguage(${JSON.stringify(r.v)})">
+          <span class="row-title">${r.label}</span>
+          ${sel === r.v ? `<span class="selected-tag">${t.selected}</span>` : ''}
+        </button>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function healthScreen() {
+  const t = copy();
+  return `<div class="content">
+    ${header(t.healthTitle, t.backToSettings, 'go("settings","back")')}
+    <div class="card"><div class="summary" style="margin-top:0">${t.healthLater}</div></div>
+  </div>`;
+}
+
+/* ---- actions ---- */
+function go(screen, dir) {
+  S.lastDir = dir ?? 'forward';
+  S.screen = screen; S.goalInvalid = false; S.goalSaved = false;
+  render();
+}
+/* v5: the duck leads the way — swipe left sends it dashing off the left edge,
+   then settings slides in as if you followed it. A busy duck never traps
+   navigation: if it can't lead, the screen just goes. */
+function openSettings() {
+  if (S.screen !== 'today') { go('settings', 'forward'); return; }
+  const led = window.__duckLead?.();
+  setTimeout(() => go('settings', 'forward'), led ? 480 : 0);
+}
+function goHome() { go('today', 'back'); }
+function miniDuckPoke() {
+  const img = document.querySelector('.mini-duck');
+  if (!img || img.dataset.busy) return;
+  img.dataset.busy = '1';
+  img.src = DUCK.surprised;
+  const heart = document.createElement('img');
+  heart.src = DUCK.heart; heart.className = 'particle';
+  img.parentElement.appendChild(heart);
+  setTimeout(() => heart.remove(), 950);
+  setTimeout(() => goHome(), 500); // follow the duck home — arrival waddles in
+}
+function setLanguage(v) { S.override = v; render(); }
+function saveGoal() {
+  const value = Number(S.goalInput.trim());
+  const ok = Number.isInteger(value) && value >= 1 && value <= 100000;
+  if (!ok) { S.goalInvalid = true; S.goalSaved = false; render(); return; }
+  S.goalHistory[dateKey(new Date())] = value; // today's entry only — history untouched
+  S.goalInvalid = false; S.goalSaved = true;
+  S.pendingCelebrate = true; // duck celebrates on the next visit home
+  render();
+}
+function clearPreview() {
+  const t = copy();
+  showAlert(t.clearConfirmTitle, t.clearConfirmMessage, [
+    { label: t.cancel }, { label: t.gotIt },
+  ]);
+}
+function showAlert(title, message, actions) {
+  S.alert = { title, message, actions };
+  renderOverlay();
+}
+function closeAlert() { S.alert = null; renderOverlay(); }
+
+/* Demo steps: phase 1 has no data source, so tapping the number adds a
+   believable amount. The real app drops this affordance — home stays '—'
+   until HealthKit (or manual entry) feeds real steps. */
+function tickNumber(el, from, to) {
+  const t0 = performance.now(), dur = 450;
+  const frame = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    el.textContent = fmt(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))));
+    if (k < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+function addSteps() {
+  const el = document.getElementById('steps-num');
+  if (!el) return;
+  const from = stepsFor(todayKey()) ?? 0;
+  S.dateSteps[todayKey()] = from + 80 + Math.floor(Math.random() * 180);
+  tickNumber(el, from, S.dateSteps[todayKey()]);
+  S.lastShown = S.dateSteps[todayKey()];
+  window.__duckWalk?.();
+  const goal = goalForDate(todayKey());
+  if (S.dateSteps[todayKey()] >= goal && S.celebratedGoal !== goal) {
+    S.celebratedGoal = goal;
+    setTimeout(() => window.__duckCelebrate?.(), 1500); // after the walk burst
+  }
+}
+
+/* Step editor popup (v3): current steps, −/+ at 100 per tap, save/cancel.
+   Writes the shared per-date store — today's entry IS the home number.
+   "Save" is prototype-local copy; src/localization.ts has no bare key yet. */
+function openEditor(key) {
+  S.editor = { key, value: stepsFor(key) ?? 0 };
+  renderOverlay();
+}
+function stepDelta(d) {
+  if (!S.editor) return;
+  S.editor.value = Math.max(0, S.editor.value + d);
+  const el = document.getElementById('editor-value');
+  if (el) el.textContent = fmt(S.editor.value);
+}
+function saveEditor() {
+  if (!S.editor) return;
+  S.dateSteps[S.editor.key] = S.editor.value;
+  S.editor = null;
+  render();
+}
+function cancelEditor() { S.editor = null; renderOverlay(); }
+
+/* ---- render ---- */
+function render() {
+  const app = document.getElementById('app');
+  const screens = {
+    today: todayScreen, settings: settingsScreen,
+    goal: goalScreen, language: languageScreen, health: healthScreen,
+  };
+  const dir = S.lastDir; S.lastDir = null;
+  const slide = dir ? (dir === 'back' ? 'slide-in-left' : 'slide-in-right') : '';
+  app.innerHTML = `<div class="${slide}">${screens[S.screen]()}</div>`;
+  app.scrollTop = 0;
+  if (S.screen === 'today') {
+    mountDuck();
+    S.lastShown = stepsFor(todayKey());
+    if (dir === 'back') setTimeout(() => window.__duckArrive?.(), 120);
+    if (S.pendingCelebrate) {
+      S.pendingCelebrate = false;
+      setTimeout(() => window.__duckCelebrate?.(), 500);
+    }
+  }
+  renderOverlay();
+}
+function renderOverlay() {
+  const el = document.getElementById('overlay');
+  if (S.editor) {
+    const t = copy();
+    const saveLabel = (S.override ?? S.deviceLocale) === 'vi' ? 'Lưu' : 'Save';
+    const d = lastSeven().find((x) => dateKey(x) === S.editor.key);
+    const label = dateKey(d) === todayKey() ? t.dateToday : d.toLocaleDateString(localeTag(), ROW_FMT);
+    el.innerHTML = `<div class="overlay"><div class="editor">
+      <div class="alert-title">${label}</div>
+      <div class="stepper">
+        <button class="step-btn" onclick="stepDelta(-100)" aria-label="decrease">−</button>
+        <div class="count editor-count" id="editor-value">${fmt(S.editor.value)}</div>
+        <button class="step-btn" onclick="stepDelta(100)" aria-label="increase">+</button>
+      </div>
+      <div class="alert-actions">
+        <button class="alert-btn" onclick="cancelEditor()">${t.cancel}</button>
+        <button class="alert-btn" onclick="saveEditor()">${saveLabel}</button>
+      </div>
+    </div></div>`;
+    return;
+  }
+  if (!S.alert) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="overlay"><div class="alert-card">
+    <div class="alert-title">${S.alert.title}</div>
+    <div class="alert-msg">${S.alert.message}</div>
+    <div class="alert-actions">${S.alert.actions.map((a, i) =>
+      `<button class="alert-btn" onclick="closeAlert()">${a.label}</button>`).join('')}
+    </div></div></div>`;
+}
+
+/* Swipe left on home opens Settings — the duck leads (v5). Holding home (not
+   the duck) ~700ms sends it on a stroll. pointercancel is handled because
+   touch browsers cancel pointer streams when scroll capture kicks in — that
+   was v4's swallowed swipe. Arrow keys mirror the swipe for desktop testing. */
+let swipeX = null;
+let swipeY = null;
+let holdTimer = null;
+const clearHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
+const endSwipe = () => { swipeX = null; swipeY = null; clearHold(); };
+document.addEventListener('pointerdown', (e) => {
+  swipeX = e.clientX; swipeY = e.clientY;
+  if (S.screen !== 'today') return;
+  const t = e.target;
+  if (t.closest('#duck') || t.closest('.steps-pill') || t.closest('.bubble')) return;
+  holdTimer = setTimeout(() => { holdTimer = null; window.__duckStroll?.(); }, 700);
+});
+document.addEventListener('pointermove', (e) => {
+  if (holdTimer && swipeX !== null && Math.abs(e.clientX - swipeX) > 15) clearHold();
+});
+document.addEventListener('pointerup', (e) => {
+  clearHold();
+  if (swipeX === null) return;
+  const dx = e.clientX - swipeX, dy = e.clientY - swipeY;
+  endSwipe();
+  if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy)) return; // horizontal pans only
+  if (S.screen === 'today' && dx < 0) openSettings();
+});
+document.addEventListener('pointercancel', endSwipe);
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' && S.screen === 'today') openSettings();
+  if (e.key === 'ArrowLeft' && S.screen === 'settings') goHome();
+});
+render();
+</script>
+</body>
+</html>
