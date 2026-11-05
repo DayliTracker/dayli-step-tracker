@@ -2,8 +2,6 @@ import type { PixelPetFrames, PixelPetParticles } from './PixelPet';
 
 export type Pet = {
   id: string;
-  label: string;
-  emoji: string;
   frames: PixelPetFrames;
   particles: PixelPetParticles;
 };
@@ -27,8 +25,6 @@ const duckParticles: PixelPetParticles = {
 export const PETS: Pet[] = [
   {
     id: 'duck',
-    label: 'Duck',
-    emoji: '🦆',
     frames: duckFrames,
     particles: duckParticles,
   },

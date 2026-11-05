@@ -1,0 +1,229 @@
+
+> dayli-step-tracker@1.0.0 test
+> node --experimental-strip-types --test tests/*.test.mjs
+
+TAP version 13
+# (node:3993) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3993) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/today.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: QA: no Today summary ever places a period after a kept !, ? or … terminator
+ok 1 - QA: no Today summary ever places a period after a kept !, ? or … terminator
+  ---
+  duration_ms: 10.135042
+  ...
+# Subtest: QA: goal-reached slot keeps its own ! in the Today summary in both locales
+ok 2 - QA: goal-reached slot keeps its own ! in the Today summary in both locales
+  ---
+  duration_ms: 0.156667
+  ...
+# Subtest: QA: a terminator already trailed by periods still collapses to the kept terminator
+ok 3 - QA: a terminator already trailed by periods still collapses to the kept terminator
+  ---
+  duration_ms: 0.054459
+  ...
+# Subtest: QA: src/a11y-text.ts stays the only period-strip normalizer in the whole src tree
+ok 4 - QA: src/a11y-text.ts stays the only period-strip normalizer in the whole src tree
+  ---
+  duration_ms: 1.356583
+  ...
+# (node:3994) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3994) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/a11y-text.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: sentenceSlot ends every slot with exactly one terminator
+ok 5 - sentenceSlot ends every slot with exactly one terminator
+  ---
+  duration_ms: 0.872542
+  ...
+# Subtest: a slot ending in !, ? or … keeps its own terminator and gains none
+ok 6 - a slot ending in !, ? or … keeps its own terminator and gains none
+  ---
+  duration_ms: 0.36175
+  ...
+# Subtest: exactly one sentence normalizer exists and both label builders import it
+ok 7 - exactly one sentence normalizer exists and both label builders import it
+  ---
+  duration_ms: 0.164708
+  ...
+# (node:3995) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3995) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/localization.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: Progress window is today plus the previous six device-local dates, newest first
+ok 8 - Progress window is today plus the previous six device-local dates, newest first
+  ---
+  duration_ms: 1.432583
+  ...
+# Subtest: localDateKey pads month and day and never day-shifts like toISOString
+ok 9 - localDateKey pads month and day and never day-shifts like toISOString
+  ---
+  duration_ms: 0.057542
+  ...
+# Subtest: row labels carry the day number in both locales and stay non-empty
+ok 10 - row labels carry the day number in both locales and stay non-empty
+  ---
+  duration_ms: 9.455083
+  ...
+# Subtest: row a11y label mirrors the three slots and never announces an absent total as a value
+ok 11 - row a11y label mirrors the three slots and never announces an absent total as a value
+  ---
+  duration_ms: 1.820459
+  ...
+# Subtest: a row slot ending in !, ? or … keeps its own terminator and gains no doubled one
+ok 12 - a row slot ending in !, ? or … keeps its own terminator and gains no doubled one
+  ---
+  duration_ms: 0.179875
+  ...
+# Subtest: manual-entry button stays outside the row a11y group so VoiceOver can focus it
+ok 13 - manual-entry button stays outside the row a11y group so VoiceOver can focus it
+  ---
+  duration_ms: 0.122792
+  ...
+# Subtest: manual-entry copy exists, is distinct, and admits nothing was saved
+ok 14 - manual-entry copy exists, is distinct, and admits nothing was saved
+  ---
+  duration_ms: 0.127709
+  ...
+# Subtest: Progress wires the seven local dates, per-date manual affordance, and truthful slots
+ok 15 - Progress wires the seven local dates, per-date manual affordance, and truthful slots
+  ---
+  duration_ms: 0.100458
+  ...
+# Subtest: rows wrap at narrow widths and the manual control keeps a 48-point target
+ok 16 - rows wrap at narrow widths and the manual control keeps a 48-point target
+  ---
+  duration_ms: 0.260125
+  ...
+# (node:3996) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3996) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/localization.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: tabs, Settings origins, and Settings destinations navigate correctly
+ok 17 - tabs, Settings origins, and Settings destinations navigate correctly
+  ---
+  duration_ms: 1.710375
+  ...
+# Subtest: shell labels are translated and complete in both supported locales
+ok 18 - shell labels are translated and complete in both supported locales
+  ---
+  duration_ms: 0.110209
+  ...
+# Subtest: Settings lists all destinations and clear-data actions are preview-only
+ok 19 - Settings lists all destinations and clear-data actions are preview-only
+  ---
+  duration_ms: 0.1535
+  ...
+# Subtest: interactive controls have accessible names and at least 48-point touch targets
+ok 20 - interactive controls have accessible names and at least 48-point touch targets
+  ---
+  duration_ms: 1.710208
+  ...
+# (node:3997) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3997) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/localization.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: QA: non-finite and negative step inputs clamp to a dark ring, never NaN segments
+ok 21 - QA: non-finite and negative step inputs clamp to a dark ring, never NaN segments
+  ---
+  duration_ms: 0.640125
+  ...
+# Subtest: QA: ring stays one segment short immediately before the goal and fills exactly at it
+ok 22 - QA: ring stays one segment short immediately before the goal and fills exactly at it
+  ---
+  duration_ms: 0.111541
+  ...
+# Subtest: QA: exactly-at-goal ratio renders the integer 1× path in both locales
+ok 23 - QA: exactly-at-goal ratio renders the integer 1× path in both locales
+  ---
+  duration_ms: 8.659917
+  ...
+# Subtest: QA: Vietnamese goal-reached assistive label names the cheer and the source
+ok 24 - QA: Vietnamese goal-reached assistive label names the cheer and the source
+  ---
+  duration_ms: 0.506709
+  ...
+# (node:3998) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3998) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/localization.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: ring fills toward the goal and visually caps there without passing it
+ok 25 - ring fills toward the goal and visually caps there without passing it
+  ---
+  duration_ms: 0.481833
+  ...
+# Subtest: segment angles step clockwise from 12 oclock and the view rotates each segment
+ok 26 - segment angles step clockwise from 12 oclock and the view rotates each segment
+  ---
+  duration_ms: 0.429791
+  ...
+# Subtest: ratio text keeps the uncapped value with per-locale separators
+ok 27 - ratio text keeps the uncapped value with per-locale separators
+  ---
+  duration_ms: 8.034875
+  ...
+# Subtest: goal reached is exact and only true for loaded snapshots
+ok 28 - goal reached is exact and only true for loaded snapshots
+  ---
+  duration_ms: 0.107917
+  ...
+# Subtest: loading, empty, unavailable, and error presentations are distinct and never imply denied permission
+ok 29 - loading, empty, unavailable, and error presentations are distinct and never imply denied permission
+  ---
+  duration_ms: 0.17925
+  ...
+# Subtest: loaded summary exposes exact count, goal, uncapped ratio, and source to assistive tech
+ok 30 - loaded summary exposes exact count, goal, uncapped ratio, and source to assistive tech
+  ---
+  duration_ms: 0.353833
+  ...
+# Subtest: a11y label never doubles a period in any snapshot kind or locale
+ok 31 - a11y label never doubles a period in any snapshot kind or locale
+  ---
+  duration_ms: 0.20675
+  ...
+# Subtest: duck artwork is complete, palette-bound, and changes pose on goal reach
+ok 32 - duck artwork is complete, palette-bound, and changes pose on goal reach
+  ---
+  duration_ms: 0.156292
+  ...
+# Subtest: Today wires every state, the ring fill, the source, and the character art
+ok 33 - Today wires every state, the ring fill, the source, and the character art
+  ---
+  duration_ms: 0.232542
+  ...
+# (node:3999) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:3999) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/src/tokens.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/gauwan/Codespaces/dayli-step-tracker/.claude/worktrees/issue-27-qa/package.json.
+# Subtest: tokens pin the approved palette values exactly
+ok 34 - tokens pin the approved palette values exactly
+  ---
+  duration_ms: 0.536291
+  ...
+# Subtest: tokens pin the approved radius, spacing, and type scales exactly
+ok 35 - tokens pin the approved radius, spacing, and type scales exactly
+  ---
+  duration_ms: 0.07725
+  ...
+# Subtest: the App style sheet keeps no literal hex colors or bare radius numbers
+ok 36 - the App style sheet keeps no literal hex colors or bare radius numbers
+  ---
+  duration_ms: 0.119625
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.042958

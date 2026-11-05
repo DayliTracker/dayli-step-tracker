@@ -1,0 +1,45 @@
+## Citation: App.tsx:138 — ring segments lit clockwise from 12 o'clock
+  );
+}
+
+/**
+ * Progress ring built from rounded segments filling clockwise from 12
+ * o'clock. The fill is the visual cue only — it never shows full before the
+ * goal and caps there; the exact count and uncapped ratio stay in text.
+ */
+function Ring({ lit }: { lit: number }) {
+  return (
+    <View style={s.ringTrack} accessible={false} importantForAccessibility="no-hide-descendants">
+      {Array.from({ length: RING_SEGMENTS }, (_, index) => (
+        <View
+          key={index}
+          style={[
+            s.ringSegment, index < lit && s.ringSegmentLit,
+            { transform: [{ rotate: `${segmentAngle(index)}deg` }, { translateY: -RING_RADIUS }] },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Original Dayli duck: runtime pixel grid, frame-swapped on goal reach. */
+function DuckArt({ cheer }: { cheer: boolean }) {
+  const rows = cheer ? DUCK_CHEER : DUCK_IDLE;
+  return (
+    <View
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      style={[s.duck, { width: DUCK_SIZE * DUCK_SCALE, height: DUCK_SIZE * DUCK_SCALE }]}
+    >
+      {rows.flatMap((row, y) => row.split('').map((pixel, x) => pixel === '.' ? null : (
+        <View
+          key={`${x}:${y}`}
+
+## Citation: package.json — exactly four packages, no expo-font
+deps: [('expo', '~58.0.21'), ('expo-status-bar', '~58.0.4'), ('react', '19.3.0'), ('react-native', '0.88.0')]
+expo-font: not installed (matches ADR line 27 'it is not installed yet')
+
+## DuckArt at App.tsx:155
+126:        <DuckArt cheer={reached} />
+155:function DuckArt({ cheer }: { cheer: boolean }) {

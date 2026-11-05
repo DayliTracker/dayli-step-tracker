@@ -1,0 +1,24 @@
+Red-first mutation verification (super-qa "test the tests") — both mutations
+run against head 53b0f43 + tests/a11y-labels-qa.test.mjs, then reverted; suite
+green again after restore (36/36, typecheck clean).
+
+MUTATION A — sentenceSlot reverted to progress's old always-append variant:
+  return `${trimmed}.`;   (drop the /[!?…]$/ keep)
+Result: 36 tests, 30 pass, 6 fail —
+  not ok 1 - QA: no Today summary ever places a period after a kept !, ? or … terminator
+  not ok 2 - QA: goal-reached slot keeps its own ! in the Today summary in both locales
+  not ok 3 - QA: a terminator already trailed by periods still collapses to the kept terminator
+  not ok 6 - a slot ending in !, ? or … keeps its own terminator and gains none   (builder)
+  not ok 12 - a row slot ending in !, ? or … keeps its own terminator and gains no doubled one (builder)
+  not ok 31 - a11y label never doubles a period in any snapshot kind or locale      (builder)
+Caught: the QA gap this pass closed — before it, no test failed while the Today
+summary rendered "Goal reached!." (today.test.mjs only guards "..", and
+/Gain reached!/ still matched).
+
+MUTATION B — private period-strip copy reintroduced in src/progress.ts:
+  const legacy = (slot: string) => `${slot.replace(/\.+$/u, '')}.`;
+Result: 36 tests, 35 pass, 1 fail —
+  not ok 4 - QA: src/a11y-text.ts stays the only period-strip normalizer in the whole src tree
+Caught: only the QA tree-scan test. The builder's shape test (a11y-text.test.mjs:27)
+greps for `const sentence =` and the import, so a renamed private copy evades it;
+the scan pins AC1 against any file in src/.

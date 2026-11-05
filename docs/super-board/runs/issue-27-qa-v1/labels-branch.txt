@@ -1,0 +1,48 @@
+today en loading - - :: Loading today’s steps… Daily goal: 8,000 steps.
+today en empty - - :: No steps recorded yet today. Daily goal: 8,000 steps.
+today en unavailable - - :: Your step total will appear when step data is connected. Daily goal: 8,000 steps.
+today en error - - :: Today’s steps could not be loaded. Daily goal: 8,000 steps.
+today en loaded health 12300 :: 12,300 steps. Daily goal: 8,000 steps. 1.5× of goal. Goal reached! Source: Health.
+today en loaded manual 1000 :: 1,000 steps. Daily goal: 8,000 steps. 0.1× of goal. Source: Manual.
+today en loaded health 8000 :: 8,000 steps. Daily goal: 8,000 steps. 1× of goal. Goal reached! Source: Health.
+today en loaded manual 16000 :: 16,000 steps. Daily goal: 8,000 steps. 2× of goal. Goal reached! Source: Manual.
+progress en "Today" loading - - :: Today. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Today" empty - - :: Today. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Today" unavailable - - :: Today. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Today" error - - :: Today. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Today" loaded health 12300 :: Today. 12,300 steps. Daily goal: 8,000 steps. Source: Health.
+progress en "Today" loaded manual 1000 :: Today. 1,000 steps. Daily goal: 8,000 steps. Source: Manual.
+progress en "Today" loaded health 8000 :: Today. 8,000 steps. Daily goal: 8,000 steps. Source: Health.
+progress en "Today" loaded manual 16000 :: Today. 16,000 steps. Daily goal: 8,000 steps. Source: Manual.
+progress en "Wed, Oct 28" loading - - :: Wed, Oct 28. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Wed, Oct 28" empty - - :: Wed, Oct 28. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Wed, Oct 28" unavailable - - :: Wed, Oct 28. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Wed, Oct 28" error - - :: Wed, Oct 28. Your step total will appear when step data is connected. Daily goal: 8,000 steps. Step source is not available in this shell.
+progress en "Wed, Oct 28" loaded health 12300 :: Wed, Oct 28. 12,300 steps. Daily goal: 8,000 steps. Source: Health.
+progress en "Wed, Oct 28" loaded manual 1000 :: Wed, Oct 28. 1,000 steps. Daily goal: 8,000 steps. Source: Manual.
+progress en "Wed, Oct 28" loaded health 8000 :: Wed, Oct 28. 8,000 steps. Daily goal: 8,000 steps. Source: Health.
+progress en "Wed, Oct 28" loaded manual 16000 :: Wed, Oct 28. 16,000 steps. Daily goal: 8,000 steps. Source: Manual.
+today vi loading - - :: Đang tải số bước hôm nay… Mục tiêu hằng ngày: 8.000 bước.
+today vi empty - - :: Hôm nay chưa ghi nhận bước chân nào. Mục tiêu hằng ngày: 8.000 bước.
+today vi unavailable - - :: Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước.
+today vi error - - :: Không thể tải số bước hôm nay. Mục tiêu hằng ngày: 8.000 bước.
+today vi loaded health 12300 :: 12.300 bước. Mục tiêu hằng ngày: 8.000 bước. 1,5× của mục tiêu. Hoàn thành mục tiêu! Nguồn: Sức khỏe.
+today vi loaded manual 1000 :: 1.000 bước. Mục tiêu hằng ngày: 8.000 bước. 0,1× của mục tiêu. Nguồn: Thủ công.
+today vi loaded health 8000 :: 8.000 bước. Mục tiêu hằng ngày: 8.000 bước. 1× của mục tiêu. Hoàn thành mục tiêu! Nguồn: Sức khỏe.
+today vi loaded manual 16000 :: 16.000 bước. Mục tiêu hằng ngày: 8.000 bước. 2× của mục tiêu. Hoàn thành mục tiêu! Nguồn: Thủ công.
+progress vi "Today" loading - - :: Today. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Today" empty - - :: Today. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Today" unavailable - - :: Today. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Today" error - - :: Today. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Today" loaded health 12300 :: Today. 12.300 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Sức khỏe.
+progress vi "Today" loaded manual 1000 :: Today. 1.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Thủ công.
+progress vi "Today" loaded health 8000 :: Today. 8.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Sức khỏe.
+progress vi "Today" loaded manual 16000 :: Today. 16.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Thủ công.
+progress vi "Wed, Oct 28" loading - - :: Wed, Oct 28. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Wed, Oct 28" empty - - :: Wed, Oct 28. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Wed, Oct 28" unavailable - - :: Wed, Oct 28. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Wed, Oct 28" error - - :: Wed, Oct 28. Tổng số bước sẽ hiển thị khi dữ liệu được kết nối. Mục tiêu hằng ngày: 8.000 bước. Nguồn dữ liệu bước chân chưa có trong phiên bản này.
+progress vi "Wed, Oct 28" loaded health 12300 :: Wed, Oct 28. 12.300 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Sức khỏe.
+progress vi "Wed, Oct 28" loaded manual 1000 :: Wed, Oct 28. 1.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Thủ công.
+progress vi "Wed, Oct 28" loaded health 8000 :: Wed, Oct 28. 8.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Sức khỏe.
+progress vi "Wed, Oct 28" loaded manual 16000 :: Wed, Oct 28. 16.000 bước. Mục tiêu hằng ngày: 8.000 bước. Nguồn: Thủ công.

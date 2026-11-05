@@ -1,0 +1,70 @@
+# QA checks — issue #15 v1 — branch issue-15-adr-record-no-ui-framework @ ef33c13ced6d55c723e5d742f88be00b763b24e5
+## AC1: docs/adr/0001-no-ui-framework.md exists with context, decision, consequences
+PASS: file exists
+7:## Context
+33:## Decision
+48:## Consequences
+69:## Revisit triggers
+
+## AC2: explicit revisit triggers, not an open-ended ban
+71:This is not an open-ended ban. Reopen this decision — with a superseding ADR,
+74:1. **Gesture-driven navigation.** A flow needs swipe-back stacks,
+75-   shared-element transitions, or deep links that the reducer cannot express
+76-   without reimplementing `react-navigation`.
+77:2. **Complex charts.** A surface needs visuals the segment ring cannot
+78-   express — multi-series lines, axes, or point counts that make 48+ rotated
+79-   views unusable. Candidate then: `react-native-svg` (or a chart library on
+--
+81:3. **A second mascot renderer.** A mascot needs frame-sequenced animation
+82-   timing, Lottie, or per-frame image assets that the runtime pixel grid
+83-   (`App.tsx` `DuckArt`) cannot share.
+
+## AC3: docs/adr/ pointer in AGENTS.md resolves to a real document
+9:Single-context domain docs: `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.
+PASS: pointer target docs/adr/ contains 0001-no-ui-framework.md
+
+## Citation: src/navigation.ts:1 — Screen union + navigate reducer, six screens
+export type PrimaryTab = 'today' | 'progress';
+export type SettingsDestination = 'goal' | 'language' | 'health';
+export type Screen = PrimaryTab | 'settings' | SettingsDestination;
+export type NavigationState = { screen: Screen; settingsOrigin: PrimaryTab };
+export type NavigationAction =
+  | { type: 'select-tab'; tab: PrimaryTab }
+  | { type: 'open-settings' }
+  | { type: 'open-destination'; destination: SettingsDestination }
+  | { type: 'back' };
+
+export const createNavigationState = (): NavigationState => ({
+  screen: 'today', settingsOrigin: 'today',
+});
+
+export function navigate(state: NavigationState, action: NavigationAction): NavigationState {
+  switch (action.type) {
+    case 'select-tab': return { ...state, screen: action.tab };
+    case 'open-settings': return {
+      screen: 'settings',
+      settingsOrigin: state.screen === 'today' || state.screen === 'progress'
+        ? state.screen : state.settingsOrigin,
+    };
+    case 'open-destination':
+      return state.screen === 'settings' ? { ...state, screen: action.destination } : state;
+    case 'back':
+      if (state.screen === 'settings') return { ...state, screen: state.settingsOrigin };
+      if (state.screen === 'goal' || state.screen === 'language' || state.screen === 'health') {
+        return { ...state, screen: 'settings' };
+      }
+      return state;
+  }
+}
+
+## Citation: src/today.ts:4 — RING_SEGMENTS
+import type { Copy, Locale } from './localization';
+
+export const DEFAULT_GOAL = 8000;
+export const RING_SEGMENTS = 48;
+
+export type StepSource = 'health' | 'manual';
+
+/**
+ * Presentation snapshot for Today. Phase 1 has no data owner, so the shell
+ * passes `unavailable`; Phases 2-3 pass real values through the same shape.
