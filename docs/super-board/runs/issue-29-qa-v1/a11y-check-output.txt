@@ -1,0 +1,8 @@
+{
+ "screen": "402x874",
+ "elements": 4,
+ "buttons": [],
+ "staticTexts": 0,
+ "minTouchTarget": null
+}
+PASS 02-ax-tree-while-bubble-visible.json
