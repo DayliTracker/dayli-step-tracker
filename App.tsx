@@ -40,10 +40,11 @@ const RING_SIZE = 190;
 const RING_RADIUS = 86;
 const RING_SEGMENT_WIDTH = 5;
 const RING_SEGMENT_HEIGHT = 11;
-// The mascot slot: 150 renders the supersampled frames as a crisp downscale,
-// and the slot reserves the poke heart's rise (the engine lifts it 0.6 × size
-// above the pet box) so no mascot state draws over the text above it.
-const PET_SIZE = 150;
+// The mascot slot: 200 keeps the supersampled frames a crisp downscale while
+// the duck holds the home screen's center, and the slot reserves the poke
+// heart's rise (the engine lifts it 0.6 × size above the pet box) so no
+// mascot state draws over the text above it.
+const PET_SIZE = 200;
 const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
 // The character slot takes the first registered pet; the registry grows as
 // /mascot lands new animals (components/pets.ts).
@@ -294,7 +295,8 @@ function Today({ date, locale, goal, manual }: {
   // Today renders from the local data owner: loading while the record reads,
   // error when the read failed, the date's saved manual total when it has one
   // (manual is the only source until phase 3 connects Health), and empty when
-  // it has none. Nothing is fabricated; the goal is the saved per-date value.
+  // it has none. Nothing is fabricated; the goal is the saved per-date value:
+  // the ratio line, the goal-reached state, and every goal line key off it.
   const todayKey = localDateKey(new Date());
   const total = manual.kind === 'ready' && manual.totals !== null
     ? manualTotalForDate(manual.totals, todayKey)
@@ -320,17 +322,27 @@ function Today({ date, locale, goal, manual }: {
     <View>
       <Text style={s.date}>{date}</Text>
       <View style={s.card}>
+        {/* The mascot is the home screen's center; the ring lives on the
+            Progress screen. This group stays the single screen-reader source:
+            the exact count, goal, ratio, and source in text, never visuals. */}
         <View
           accessible
           accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
-          style={s.ring}
         >
-          <Ring lit={loaded ? litSegments(loaded.steps, goal) : 0} />
-          <View style={s.ringCenter} accessible={false} importantForAccessibility="no-hide-descendants">
-            <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
-              {loaded ? formatNumber(loaded.steps, locale) : '—'}
-            </Text>
-            <Text style={s.steps}>{copy.steps}</Text>
+          <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
+            {loaded ? formatNumber(loaded.steps, locale) : '—'}
+          </Text>
+          <Text style={s.steps}>{copy.steps}</Text>
+          {/* Decorative slot: hidden from the accessibility tree (both
+              platforms) so the summary stays the screen-reader source. The
+              slot's fixed height reserves the poke heart's rise above the pet. */}
+          <View
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={s.petSlot}
+          >
+            <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
           </View>
         </View>
         <Text style={s.summary}>{summary}</Text>
@@ -342,17 +354,6 @@ function Today({ date, locale, goal, manual }: {
             ? `${copy.sourceLabel}: ${loaded.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
             : copy.sourceUnavailable}
         </Text>
-        {/* Decorative slot: hidden from the accessibility tree (both platforms)
-            so the ring summary stays the screen-reader source. The slot's fixed
-            height reserves the poke heart's rise above the pet. */}
-        <View
-          accessible={false}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={s.petSlot}
-        >
-          <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
-        </View>
         {reached && <Text style={s.cheer}>{copy.goalReached}</Text>}
       </View>
     </View>
@@ -386,13 +387,37 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
 }) {
   const copy = getCopy(locale);
   const dates = lastSevenLocalDates(new Date());
-  // Each row renders from the local data owner: the date's saved manual total
-  // (the visible Manual source label) or the truthful no-data state — Health
-  // totals arrive in phase 3. Each row's goal is that date's own: a goal
-  // change never rewrites history. The row control opens the manual editor
-  // for that exact date.
+  // The ring renders today's real total from the local data owner (manual is
+  // the only source until phase 3 connects Health). Each row renders from the
+  // same owner: the date's saved manual total (the visible Manual source
+  // label) or the truthful no-data state — Health totals arrive in phase 3.
+  // Each row's goal is that date's own: a goal change never rewrites history.
+  // The row control opens the manual editor for that exact date.
+  const todayDateKey = localDateKey(new Date());
+  const todayTotal = manual.kind === 'ready' && manual.totals !== null
+    ? manualTotalForDate(manual.totals, todayDateKey)
+    : null;
+  const snapshot: TodaySnapshot = manual.kind !== 'ready' ? { kind: 'loading' }
+    : manual.totals === null ? { kind: 'error' }
+    : todayTotal !== null ? { kind: 'loaded', steps: todayTotal, source: 'manual' }
+    : { kind: 'empty' };
+  const loaded = snapshot.kind === 'loaded' ? snapshot : null;
+  const goal = goalHistory ? goalForDate(goalHistory, todayDateKey) : DEFAULT_GOAL;
   return (
     <View>
+      <View
+        accessible
+        accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
+        style={s.ring}
+      >
+        <Ring lit={loaded ? litSegments(loaded.steps, goal) : 0} />
+        <View style={s.ringCenter} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
+            {loaded ? formatNumber(loaded.steps, locale) : '—'}
+          </Text>
+          <Text style={s.steps}>{copy.steps}</Text>
+        </View>
+      </View>
       <Text style={s.intro}>{copy.progressIntro}</Text>
       {dates.map((date, index) => {
         const label = index ? formatRowDate(date, locale) : copy.dateToday;
@@ -404,7 +429,7 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
         const snapshot: TodaySnapshot = total !== null
           ? { kind: 'loaded', steps: total, source: 'manual' }
           : { kind: 'unavailable' };
-        const goal = `${formatNumber(rowGoal, locale)} ${copy.steps}`;
+        const goalText = `${formatNumber(rowGoal, locale)} ${copy.steps}`;
         return (
           <View key={dateKey} style={s.progressRow}>
             {/* The `accessible` group wraps only the three slot lines. An
@@ -421,7 +446,7 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
                   {total !== null ? `${formatNumber(total, locale)} ${copy.steps}` : `— ${copy.steps}`}
                 </Text>
               </View>
-              <Text style={s.muted}>{copy.goal}: {goal}</Text>
+              <Text style={s.muted}>{copy.goal}: {goalText}</Text>
               <Text style={s.muted}>
                 {snapshot.kind === 'loaded'
                   ? `${copy.sourceLabel}: ${copy.sourceManual}`
@@ -702,7 +727,8 @@ const s = StyleSheet.create({
     marginBottom: spacing.xxl },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
+  ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'center' },
   ringTrack: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   ringSegment: {
     position: 'absolute', width: RING_SEGMENT_WIDTH, height: RING_SEGMENT_HEIGHT,
@@ -712,7 +738,7 @@ const s = StyleSheet.create({
   ringSegmentLit: { backgroundColor: colors.ringLit },
   ringCenter: { alignItems: 'center', maxWidth: 2 * (RING_RADIUS - RING_SEGMENT_HEIGHT - spacing.lg) },
   petSlot: {
-    marginTop: spacing.section, alignSelf: 'center',
+    marginTop: spacing.section, alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
   },
   cheer: { color: colors.accentText, fontSize: typeSize.small, fontFamily: typeFace.display.bold,
