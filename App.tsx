@@ -29,9 +29,10 @@ import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
 } from './src/progress';
 import {
-  DEFAULT_GOAL, RING_SEGMENTS, formatNumber, formatRatio, goalReached, litSegments,
+  DEFAULT_GOAL, RING_SEGMENTS, formatNumber, litSegments,
   progressRatio, segmentAngle, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import PixelPet from './components/PixelPet';
 import { PETS } from './components/pets';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
@@ -46,6 +47,9 @@ const RING_SEGMENT_HEIGHT = 11;
 // mascot state draws over the text above it.
 const PET_SIZE = 200;
 const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
+// The footprints mark beside the step count mirrors the prototype's 24px
+// 👣 (prototype/textless-shell v6 .steps-icon).
+const FOOTPRINT_SIZE = 24;
 // The character slot takes the first registered pet; the registry grows as
 // /mascot lands new animals (components/pets.ts).
 const pet = PETS[0];
@@ -249,8 +253,8 @@ export default function App() {
   );
 }
 
-function Header({ title, action, label, onPress }: {
-  title: string; action: string; label: string; onPress: () => void;
+function Header({ title, icon, action, label, onPress }: {
+  title: string; icon?: ReactElement; action?: string; label: string; onPress: () => void;
 }) {
   return (
     <View style={s.header}>
@@ -259,7 +263,10 @@ function Header({ title, action, label, onPress }: {
         <Text style={s.title}>{title}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.headerAction}>
-        <Text style={s.actionText}>{action}</Text>
+        {/* Glyph actions render as vector icons (issue #28); text actions are
+            the bilingual back labels. Either way the Pressable's label is the
+            only name VoiceOver reads. */}
+        {icon ?? <Text style={s.actionText}>{action}</Text>}
       </Pressable>
     </View>
   );
@@ -271,32 +278,45 @@ function PrimaryPage({ screen, locale, onNavigate, goalHistory, manual }: {
 }) {
   const copy = getCopy(locale);
   const today = screen === 'today';
-  const title = today ? copy.todayTitle : copy.progressTitle;
-  const date = new Date().toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
   return (
-    <ScrollView contentContainerStyle={s.content}>
-      <Header title={title} action="⚙" label={copy.openSettings}
-        onPress={() => onNavigate({ type: 'open-settings' })} />
+    // Home is the textless hero (prototype/textless-shell): no header, no
+    // chrome — Settings opens from the Progress header gear until the swipe
+    // shell lands.
+    <ScrollView contentContainerStyle={today ? s.hero : s.content}>
       {today
-        ? <Today date={date} locale={locale} manual={manual}
+        ? <Today locale={locale} manual={manual}
             goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL} />
-        : <Progress locale={locale} goalHistory={goalHistory} manual={manual}
-            onNavigate={onNavigate} />}
+        : <>
+          <Header title={copy.progressTitle} label={copy.openSettings}
+            icon={
+              <Ionicons
+                name="settings-outline" size={typeSize.heading} color={colors.text}
+              />
+            }
+            onPress={() => onNavigate({ type: 'open-settings' })} />
+          <Progress locale={locale} goalHistory={goalHistory} manual={manual}
+            onNavigate={onNavigate} />
+        </>}
     </ScrollView>
   );
 }
 
-function Today({ date, locale, goal, manual }: {
-  date: string; locale: Locale; goal: number; manual: ManualState;
+/**
+ * The textless home (prototype/textless-shell v2–v6): the duck centred high
+ * with the step count and one footprints mark, nothing else. The header, date
+ * line, card chrome, summary sentence, goal block, and source line are gone;
+ * the full today summary (count, goal, ratio, source) stays the accessible
+ * group's screen-reader label. The pill is inert — the stepper that taps it
+ * lands with issue #44.
+ */
+function Today({ locale, goal, manual }: {
+  locale: Locale; goal: number; manual: ManualState;
 }) {
   const copy = getCopy(locale);
   // Today renders from the local data owner: loading while the record reads,
   // error when the read failed, the date's saved manual total when it has one
   // (manual is the only source until phase 3 connects Health), and empty when
-  // it has none. Nothing is fabricated; the goal is the saved per-date value:
-  // the ratio line, the goal-reached state, and every goal line key off it.
+  // it has none. Nothing is fabricated; the goal is the saved per-date value.
   const todayKey = localDateKey(new Date());
   const total = manual.kind === 'ready' && manual.totals !== null
     ? manualTotalForDate(manual.totals, todayKey)
@@ -306,55 +326,41 @@ function Today({ date, locale, goal, manual }: {
     : total !== null ? { kind: 'loaded', steps: total, source: 'manual' }
     : { kind: 'empty' };
   const loaded = snapshot.kind === 'loaded' ? snapshot : null;
-  const reached = goalReached(snapshot, goal);
   // Progress drives the pet's mood machine: idle at rest, a walk burst on
   // rising steps, celebrate at the goal — and back to idle when a new day
   // resets progress below 1. A saved manual total gives real progress; a
   // date with none idles the pet until data exists.
   const progress = loaded ? Math.min(progressRatio(loaded.steps, goal), 1) : 0;
-  const summary = loaded
-    ? `${formatRatio(progressRatio(loaded.steps, goal), locale)} ${copy.ratioOfGoal}`
-    : snapshot.kind === 'loading' ? copy.todayLoading
-    : snapshot.kind === 'empty' ? copy.todayEmpty
-    : snapshot.kind === 'error' ? copy.todayError
-    : copy.stepsUnavailable;
   return (
-    <View>
-      <Text style={s.date}>{date}</Text>
-      <View style={s.card}>
-        {/* The mascot is the home screen's center; the ring lives on the
-            Progress screen. This group stays the single screen-reader source:
-            the exact count, goal, ratio, and source in text, never visuals. */}
-        <View
-          accessible
-          accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
-        >
-          <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
-            {loaded ? formatNumber(loaded.steps, locale) : '—'}
-          </Text>
-          <Text style={s.steps}>{copy.steps}</Text>
-          {/* Decorative slot: hidden from the accessibility tree (both
-              platforms) so the summary stays the screen-reader source. The
-              slot's fixed height reserves the poke heart's rise above the pet. */}
-          <View
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={s.petSlot}
-          >
-            <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
-          </View>
-        </View>
-        <Text style={s.summary}>{summary}</Text>
-        <View style={s.divider} />
-        <Text style={s.muted}>{copy.goal}</Text>
-        <Text style={s.goal}>{formatNumber(goal, locale)} {copy.steps}</Text>
-        <Text style={s.muted}>
-          {loaded
-            ? `${copy.sourceLabel}: ${loaded.source === 'health' ? copy.sourceHealth : copy.sourceManual}`
-            : copy.sourceUnavailable}
+    // The mascot is the home screen's center; the ring lives on the Progress
+    // screen. This group stays the single screen-reader source: the exact
+    // count, goal, ratio, and source in text, never visuals — including the
+    // goal-reached state (src/today.ts todayA11yLabel).
+    <View
+      accessible
+      accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
+    >
+      {/* Decorative slot: hidden from the accessibility tree (both platforms)
+          so the group label stays the screen-reader source. The slot's fixed
+          height reserves the poke heart's rise above the pet. */}
+      <View
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={s.petSlot}
+      >
+        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} size={PET_SIZE} />
+      </View>
+      {/* The count and the footprints mark, nothing else. Not a control: the
+          tap affordance routes to #44's stepper and stays inert until then. */}
+      <View style={s.stepsPill}>
+        <Text style={s.count} adjustsFontSizeToFit numberOfLines={1}>
+          {loaded ? formatNumber(loaded.steps, locale) : '—'}
         </Text>
-        {reached && <Text style={s.cheer}>{copy.goalReached}</Text>}
+        <MaterialCommunityIcons
+          name="shoe-print" size={FOOTPRINT_SIZE} color={colors.text}
+          accessible={false}
+        />
       </View>
     </View>
   );
@@ -485,6 +491,8 @@ function SettingsPage({ nav, locale, onNavigate, onClear, clearError, goalSubtit
     <ScrollView contentContainerStyle={s.content}>
       <Header title={copy.settingsTitle} action={back} label={back} onPress={() => onNavigate({ type: 'back' })} />
       <View style={s.list}>
+        {/* Title-only rows (prototype/textless-shell v3): the subtitle is not
+            rendered — it survives in the row's accessibility label. */}
         {rows.map((row) => (
           <Pressable key={row.title} accessibilityRole="button"
             accessibilityLabel={`${row.title}. ${row.subtitle}`}
@@ -492,11 +500,11 @@ function SettingsPage({ nav, locale, onNavigate, onClear, clearError, goalSubtit
               type: 'open-destination', destination: row.destination,
             })}
             style={s.settingsRow}>
-            <View style={s.rowCopy}>
-              <Text style={[s.rowTitle, 'clear' in row && s.danger]}>{row.title}</Text>
-              <Text style={s.rowSubtitle}>{row.subtitle}</Text>
-            </View>
-            <Text style={s.chevron} accessible={false}>›</Text>
+            <Text style={[s.rowTitle, 'clear' in row && s.danger]}>{row.title}</Text>
+            <Ionicons
+              name="chevron-forward" size={typeSize.title} color={colors.textMuted}
+              accessible={false}
+            />
           </Pressable>
         ))}
       </View>
@@ -723,8 +731,9 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.xxl, borderRadius: radius.action, backgroundColor: colors.accent },
   actionText: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
     textAlign: 'center' },
-  date: { color: colors.textMuted, fontSize: typeSize.body, fontFamily: typeFace.text.regular,
-    marginBottom: spacing.xxl },
+  // The textless home: content anchored near the top so the duck sits high
+  // (the prototype's 9vh top anchor on a full-height phone).
+  hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   ring: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center',
@@ -741,15 +750,17 @@ const s = StyleSheet.create({
     marginTop: spacing.section, alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
   },
-  cheer: { color: colors.accentText, fontSize: typeSize.small, fontFamily: typeFace.display.bold,
-    marginTop: spacing.lg, textAlign: 'center' },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
     fontVariant: typeVariant.tabularNums },
+  // Count + footprints mark on the textless home: one baseline row like the
+  // prototype's steps-pill (row direction, gap 10, padding 8).
+  stepsPill: {
+    marginTop: spacing.xl, flexDirection: 'row', alignItems: 'baseline',
+    gap: spacing.xl, padding: spacing.lg,
+  },
   steps: { color: colors.textMuted, fontSize: typeSize.small, fontFamily: typeFace.text.regular },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
     fontFamily: typeFace.text.regular, textAlign: 'center', marginTop: spacing.section },
-  divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
-    marginVertical: spacing.section },
   muted: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
     fontFamily: typeFace.text.regular, marginTop: spacing.md },
   goal: { color: colors.text, fontSize: typeSize.heading, fontFamily: typeFace.text.bold,
@@ -776,14 +787,10 @@ const s = StyleSheet.create({
     fontFamily: typeFace.text.bold, textAlign: 'center' },
   list: { gap: spacing.xl, marginTop: spacing.gutter, alignSelf: 'stretch' },
   settingsRow: {
-    minHeight: 70, flexDirection: 'row', alignItems: 'center', padding: spacing.gutter,
-    borderRadius: radius.row, backgroundColor: colors.card, borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: spacing.gutter, borderRadius: radius.row, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
   },
-  rowCopy: { flex: 1, paddingRight: spacing.lg },
-  rowSubtitle: { color: colors.textMuted, fontSize: typeSize.caption,
-    lineHeight: typeLeading.dense, fontFamily: typeFace.text.regular, marginTop: spacing.xs },
-  chevron: { color: colors.textMuted, fontSize: typeSize.title, fontFamily: typeFace.text.regular },
   danger: { color: colors.danger },
   disclosure: { color: colors.textMuted, fontSize: typeSize.caption, lineHeight: typeLeading.body,
     fontFamily: typeFace.text.regular, marginTop: spacing.section },

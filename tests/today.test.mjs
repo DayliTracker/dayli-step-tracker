@@ -8,6 +8,7 @@ import {
 } from '../src/today.ts';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const todayLogicSource = readFileSync(new URL('../src/today.ts', import.meta.url), 'utf8');
 const engineSource = readFileSync(new URL('../components/PixelPet.tsx', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../components/pets.ts', import.meta.url), 'utf8');
 
@@ -198,23 +199,31 @@ test('the mascot slot reserves headroom for the poke heart, so no pet state cove
     'the pet sits at the slot bottom with the headroom free above it');
 });
 
-test('Today wires the animated pet: mood-driving progress, decorative slot, and the cheer text', () => {
+test('Today wires the textless hero: pet, count, footprints mark, and the a11y source group', () => {
+  const todaySource = appSource.slice(
+    appSource.indexOf('function Today('),
+    appSource.indexOf('function Progress('),
+  );
   assert.match(appSource, /todayA11yLabel\(snapshot/);
   // The saved per-date goal feeds every goal line (issue #17), so the wiring
   // names the `goal` value, not the DEFAULT_GOAL constant.
   assert.match(appSource, /litSegments\(loaded\.steps, goal\)/);
-  assert.match(appSource, /copy\.sourceHealth/);
-  assert.match(appSource, /copy\.sourceManual/);
-  assert.match(appSource, /goalReached\(snapshot, goal\)/);
-  assert.match(appSource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
+  assert.match(todaySource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
   assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, goal\), 1\)/,
     'today progress is capped at 1 before it reaches the mood machine');
   assert.match(appSource, /accessibilityElementsHidden/,
     'the pet slot must hide itself and its poke control from VoiceOver');
-  assert.match(appSource, /copy\.goalReached/, 'the goal-reached cheer text stays in the flow');
   for (const kind of ['loading', 'empty', 'unavailable', 'error', 'loaded']) {
     assert.ok(appSource.includes(`'${kind}'`), `state ${kind} must appear in the Today presentation`);
   }
   assert.ok(appSource.includes('importantForAccessibility="no-hide-descendants"'),
     'decorative art and ring internals stay out of the screen-reader order');
+  // Issue #28: home is textless — the count and the footprints vector mark
+  // are the only visible content; the source, ratio, and goal-reached state
+  // are announced by the group's a11y label (src/today.ts), never rendered.
+  assert.match(todaySource, /shoe-print/, 'the footprints mark renders as a vector icon');
+  assert.doesNotMatch(todaySource, /s\.(summary|date|divider|cheer|muted|goal)\b/,
+    'home renders no text beyond the count');
+  assert.match(todayLogicSource, /copy\.sourceHealth/, 'the source reaches the a11y label');
+  assert.match(todayLogicSource, /goalReached\(/, 'goal reached is announced, not shown');
 });
