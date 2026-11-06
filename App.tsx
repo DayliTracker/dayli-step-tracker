@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert, Animated, Easing, GestureResponderEvent, PanResponder, Pressable,
+  Alert, Animated, Easing, GestureResponderEvent, Image, PanResponder, Pressable,
   SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
@@ -15,7 +15,7 @@ import {
   Lexend_400Regular, Lexend_600SemiBold, Lexend_700Bold, Lexend_800ExtraBold,
 } from '@expo-google-fonts/lexend';
 import {
-  createNavigationState, navigate, type NavigationAction, type NavigationState,
+  createNavigationState, navigate, type NavigationAction,
   type SettingsDestination,
 } from './src/navigation';
 import {
@@ -28,8 +28,8 @@ import {
 } from './src/goals';
 import { clearLocalData } from './src/clear-data';
 import {
-  loadManualTotals, saveManualTotals, setManualTotal, removeManualTotal,
-  manualTotalForDate, parseManualTotalInput, DEFAULT_MANUAL_TOTALS, type ManualTotals,
+  loadManualTotals, saveManualTotals, setManualTotal,
+  manualTotalForDate, MAX_MANUAL_TOTAL, DEFAULT_MANUAL_TOTALS, type ManualTotals,
 } from './src/manual-totals';
 import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
@@ -38,7 +38,10 @@ import {
   DEFAULT_GOAL, formatNumber, progressRatio, todayA11yLabel, type TodaySnapshot,
 } from './src/today';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import PixelPet, { LEAD_MS, type PixelPetEvent, type PixelPetHandle } from './components/PixelPet';
+import PixelPet, {
+  LEAD_MS, type PixelPetEvent, type PixelPetFrames, type PixelPetHandle,
+  type PixelPetParticles,
+} from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
 import { STROLL_HOLD_MS, countFlips, isWiggle } from './src/moods';
@@ -56,6 +59,12 @@ const FOOTPRINT_SIZE = 24;
 // The screen slide (prototype v5 slideInRight/Left: ±70px, .3s ease-out + fade).
 const SLIDE_MS = 300;
 const SLIDE_OFFSET = 70;
+// The stepper popup (prototype v3): −/+ change the value by 100 with a 0
+// floor (and the store's 100,000 ceiling), and the mini duck follows the
+// poke home after .5s.
+const STEP = 100;
+const MINI_DUCK_SIZE = 48;
+const MINI_DUCK_HOME_MS = 500;
 // The character slot takes the first registered pet; the registry grows as
 // /mascot lands new animals (components/pets.ts).
 const pet = PETS[0];
@@ -221,17 +230,6 @@ export default function App() {
       });
     });
   };
-  const applyManualRemoval = (dateKey: string) => {
-    if (manual.kind !== 'ready' || manual.totals === null) return;
-    void saveManualTotals(AsyncStorage, removeManualTotal(manual.totals, dateKey))
-      .then((result) => {
-        setManual((state) => {
-          if (state.kind !== 'ready') return state;
-          if (result.kind === 'error') return { ...state, error: result.reason };
-          return { kind: 'ready', totals: result.value, error: null };
-        });
-      });
-  };
   // Confirmed clear-data resets exactly the local documents — preferences,
   // goal history, manual totals, cached summaries: the keys are removed, the
   // in-memory state returns to the defaults, so the 8,000 goal and the
@@ -265,13 +263,10 @@ export default function App() {
           onOpenSettings={openSettingsFromHome} petRef={petRef} />
       </ScrollView>
     );
-  } else if (nav.screen === 'manual') {
-    page = <ManualPage nav={nav} locale={locale} onNavigate={send} manual={manual}
-      onApply={applyManualTotal} onRemove={applyManualRemoval} />;
   } else if (nav.screen === 'settings') {
     page = <SettingsPage locale={locale} onNavigate={send} onClear={confirmClear}
       clearError={clearError} goalSubtitle={goalSubtitle}
-      goalHistory={goalHistory} manual={manual} />;
+      goalHistory={goalHistory} manual={manual} onApply={applyManualTotal} />;
   } else {
     page = (
       <DestinationPage destination={nav.screen} locale={locale} onNavigate={send}
@@ -325,8 +320,9 @@ function ScreenEnter({ dir, children }: {
   );
 }
 
-function Header({ title, icon, action, label, onPress }: {
+function Header({ title, icon, action, label, onPress, side }: {
   title: string; icon?: ReactElement; action?: string; label: string; onPress: () => void;
+  side?: ReactElement;
 }) {
   return (
     <View style={s.header}>
@@ -334,12 +330,15 @@ function Header({ title, icon, action, label, onPress }: {
         <Text style={s.eyebrow}>DAYLI STEP TRACKER</Text>
         <Text style={s.title}>{title}</Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.headerAction}>
-        {/* Glyph actions render as vector icons (issue #28); text actions are
-            the bilingual back labels. Either way the Pressable's label is the
-            only name VoiceOver reads. */}
-        {icon ?? <Text style={s.actionText}>{action}</Text>}
-      </Pressable>
+      <View style={s.headerSide}>
+        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.headerAction}>
+          {/* Glyph actions render as vector icons (issue #28); text actions are
+              the bilingual back labels. Either way the Pressable's label is the
+              only name VoiceOver reads. */}
+          {icon ?? <Text style={s.actionText}>{action}</Text>}
+        </Pressable>
+        {side}
+      </View>
     </View>
   );
 }
@@ -511,8 +510,9 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
         <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
           size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} onDuckTouch={onDuckTouch} />
       </View>
-      {/* The count and the footprints mark, nothing else. Not a control: the
-          tap affordance routes to #44's stepper and stays inert until then.
+      {/* The count and the footprints mark, nothing else. The pill stays
+          inert — today's number is edited from Settings' date-row stepper
+          (issue #44), which writes the same manual store this screen reads.
           Its touch flag keeps the stroll long-hold off the pill (issue #43). */}
       <View style={s.stepsPill}
         onTouchStart={onPillTouchStart} onTouchEnd={onPillTouchEnd}
@@ -532,14 +532,16 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
 
 /**
  * The date rows (prototype v3): Progress embeds in Settings' scroll below
- * the setting rows — the seven local dates, each row showing its date and
- * total, with the goal and source surviving in the row's accessibility
- * label. The ring is gone: home already shows today's number. Each row's
- * control opens the manual editor for that exact date.
+ * the setting rows — the seven local dates, each a single tappable row
+ * showing its date and total (or the truthful '—') and nothing else. The
+ * ring is gone and there is no separate editor navigation: tapping a row
+ * opens the in-screen stepper popup for that exact date. The row's full
+ * screen-reader sentence keeps the per-date goal and source, so the visible
+ * minimalism never loses information for VoiceOver.
  */
-function Progress({ locale, goalHistory, manual, onNavigate }: {
+function Progress({ locale, goalHistory, manual, onOpenStepper }: {
   locale: Locale; goalHistory: GoalHistory | null; manual: ManualState;
-  onNavigate: (action: NavigationAction) => void;
+  onOpenStepper: (dateKey: string) => void;
 }) {
   const copy = getCopy(locale);
   const dates = lastSevenLocalDates(new Date());
@@ -552,8 +554,8 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
         // Each row renders from the local data owner: the date's saved
         // manual total or the truthful no-data state — Health totals arrive
         // in phase 3. Each row's goal is that date's own: a goal change
-        // never rewrites history. The row control opens the manual editor
-        // for that exact date.
+        // never rewrites history. Tapping the row opens the stepper for
+        // that exact date.
         const rowGoal = goalHistory ? goalForDate(goalHistory, dateKey) : DEFAULT_GOAL;
         const total = manual.kind === 'ready' && manual.totals !== null
           ? manualTotalForDate(manual.totals, dateKey)
@@ -562,44 +564,80 @@ function Progress({ locale, goalHistory, manual, onNavigate }: {
           ? { kind: 'loaded', steps: total, source: 'manual' }
           : { kind: 'unavailable' };
         return (
-          <View key={dateKey} style={s.progressRow}>
-            {/* The `accessible` group wraps only the slot lines. An
-                `accessible` container flattens every descendant into one
-                element on iOS, so a button inside it vanishes from the
-                VoiceOver tree; the manual-entry control stays a sibling. */}
-            <View
-              accessible
-              accessibilityLabel={progressRowA11yLabel(label, snapshot, rowGoal, locale, copy)}
-            >
-              <View style={s.rowTop}>
-                <Text style={s.rowTitle}>{label}</Text>
-                <Text style={s.rowValue} accessibilityElementsHidden>
-                  {total !== null ? `${formatNumber(total, locale)} ${copy.steps}` : `— ${copy.steps}`}
-                </Text>
+          // The row itself is the control (prototype v3's role="button" row):
+          // date + total only, the full sentence in the accessibility label.
+          <Pressable key={dateKey} accessibilityRole="button"
+            accessibilityLabel={progressRowA11yLabel(label, snapshot, rowGoal, locale, copy)}
+            onPress={() => onOpenStepper(dateKey)} style={s.progressRow}>
+            <View style={s.rowTop}>
+              <Text style={s.rowTitle}>{label}</Text>
+              <View style={s.rowValueWrap}>
+                <Text style={s.rowValue}>{total !== null ? formatNumber(total, locale) : '—'}</Text>
+                {total !== null && (
+                  <MaterialCommunityIcons
+                    name="shoe-print" size={16} color={colors.text}
+                    accessible={false}
+                  />
+                )}
               </View>
             </View>
-            <Pressable accessibilityRole="button"
-              accessibilityLabel={`${total !== null ? copy.editManualTotal : copy.addManualTotal} — ${label}`}
-              onPress={() => onNavigate({ type: 'open-manual', dateKey })} style={s.manualAction}>
-              <Text style={s.manualActionText}>
-                {total !== null ? copy.editManualTotal : copy.addManualTotal}
-              </Text>
-            </Pressable>
-          </View>
+          </Pressable>
         );
       })}
     </View>
   );
 }
 
-function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual }: {
+/**
+ * Settings (prototype v2–v5): the title-only destination rows, the mini duck
+ * beside the back action in the header, and Progress' seven tappable date
+ * rows. The stepper popup (prototype v3) is in-screen state — it writes the
+ * manual-totals owner on Save (the row and home, for today, re-render from
+ * the same store), never navigates, and Cancel throws the draft away.
+ */
+function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply }: {
   locale: Locale; onNavigate: (action: NavigationAction) => void;
   onClear: () => void; clearError: string | null; goalSubtitle: string;
   goalHistory: GoalHistory | null; manual: ManualState;
+  onApply: (dateKey: string, value: number) => void;
 }) {
   const copy = getCopy(locale);
   // Home is the only root (prototype v2): Settings always returns there.
   const back = copy.backToToday;
+  // The mini duck (prototype v5) sits beside the back action; poking it
+  // plays the surprised + heart and follows it home — the arrival waddle is
+  // the back navigation's own (#42's arrive()).
+  const [stepper, setStepper] = useState<{ dateKey: string; value: number } | null>(null);
+  const openStepper = (dateKey: string) => {
+    // The draft starts from the date's saved total, or 0 for a date with no
+    // data — never from a fabricated number.
+    const existing = manual.kind === 'ready' && manual.totals !== null
+      ? manualTotalForDate(manual.totals, dateKey)
+      : null;
+    setStepper({ dateKey, value: existing ?? 0 });
+  };
+  // −/+ at 100 per tap (prototype v3) inside the data owner's documented
+  // bounds — 0 floor, and the store's 100,000 ceiling, so a saved value is
+  // always one the store accepts.
+  const stepDelta = (delta: number) => {
+    setStepper((current) => current === null ? current : {
+      ...current,
+      value: Math.min(MAX_MANUAL_TOTAL, Math.max(0, current.value + delta)),
+    });
+  };
+  const saveStepper = () => {
+    if (stepper === null) return;
+    onApply(stepper.dateKey, stepper.value);
+    setStepper(null);
+  };
+  // The popup's date label matches the row that opened it.
+  const stepperDate = stepper === null ? null
+    : lastSevenLocalDates(new Date()).find((date) => localDateKey(date) === stepper.dateKey)
+      ?? null;
+  const stepperLabel = stepperDate === null ? ''
+    : localDateKey(stepperDate) === localDateKey(new Date())
+      ? copy.dateToday
+      : formatRowDate(stepperDate, locale);
   const rows: ({ title: string; subtitle: string; destination: SettingsDestination } | {
     title: string; subtitle: string; clear: true;
   })[] = [
@@ -609,34 +647,80 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
     { title: copy.clearTitle, subtitle: copy.clearSubtitle, clear: true },
   ];
   return (
-    <ScrollView contentContainerStyle={s.content}>
-      <Header title={copy.settingsTitle} action={back} label={back} onPress={() => onNavigate({ type: 'back' })} />
-      <View style={s.list}>
-        {/* Title-only rows (prototype/textless-shell v3): the subtitle is not
-            rendered — it survives in the row's accessibility label. */}
-        {rows.map((row) => (
-          <Pressable key={row.title} accessibilityRole="button"
-            accessibilityLabel={`${row.title}. ${row.subtitle}`}
-            onPress={() => 'clear' in row ? onClear() : onNavigate({
-              type: 'open-destination', destination: row.destination,
-            })}
-            style={s.settingsRow}>
-            <Text style={[s.rowTitle, 'clear' in row && s.danger]}>{row.title}</Text>
-            <Ionicons
-              name="chevron-forward" size={typeSize.title} color={colors.textMuted}
-              accessible={false}
-            />
-          </Pressable>
-        ))}
-      </View>
-      {clearError && <Text style={s.languageError}>{copy.clearStorageError}</Text>}
-      {/* Progress embeds below the setting rows (prototype v2/v3): the date
-          rows ride the same scroll, so home stays the only root screen. */}
-      <View style={s.divider} />
-      <Progress locale={locale} goalHistory={goalHistory} manual={manual}
-        onNavigate={onNavigate} />
-      <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
-    </ScrollView>
+    <View style={s.screen}>
+      <ScrollView contentContainerStyle={s.content}>
+        <Header title={copy.settingsTitle} action={back} label={back}
+          onPress={() => onNavigate({ type: 'back' })}
+          side={<MiniDuck frames={pet.frames} particles={pet.particles}
+            label={copy.miniDuckPoke} onHome={() => onNavigate({ type: 'back' })} />} />
+        <View style={s.list}>
+          {/* Title-only rows (prototype/textless-shell v3): the subtitle is not
+              rendered — it survives in the row's accessibility label. */}
+          {rows.map((row) => (
+            <Pressable key={row.title} accessibilityRole="button"
+              accessibilityLabel={`${row.title}. ${row.subtitle}`}
+              onPress={() => 'clear' in row ? onClear() : onNavigate({
+                type: 'open-destination', destination: row.destination,
+              })}
+              style={s.settingsRow}>
+              <Text style={[s.rowTitle, 'clear' in row && s.danger]}>{row.title}</Text>
+              <Ionicons
+                name="chevron-forward" size={typeSize.title} color={colors.textMuted}
+                accessible={false}
+              />
+            </Pressable>
+          ))}
+        </View>
+        {clearError && <Text style={s.languageError}>{copy.clearStorageError}</Text>}
+        {/* A failed manual read or write surfaces here — the stepper's Save
+            never fakes success: until the stored record confirms, the rows
+            keep the previous totals. */}
+        {manual.kind === 'ready' && manual.error !== null && (
+          <Text style={s.languageError}>{copy.manualStorageError}</Text>
+        )}
+        {/* Progress embeds below the setting rows (prototype v2/v3): the date
+            rows ride the same scroll, so home stays the only root screen. */}
+        <View style={s.divider} />
+        <Progress locale={locale} goalHistory={goalHistory} manual={manual}
+          onOpenStepper={openStepper} />
+        <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
+      </ScrollView>
+      {/* The stepper popup (prototype v3): an in-screen overlay, not a
+          screen — navigation never leaves Settings. accessibilityViewIsModal
+          keeps VoiceOver inside the popup while it is open. */}
+      {stepper !== null && (
+        <View style={s.overlay} accessibilityViewIsModal>
+          <View style={s.editorCard}>
+            <Text style={s.alertTitle}>{stepperLabel}</Text>
+            <View style={s.stepperRow}>
+              <Pressable accessibilityRole="button"
+                accessibilityLabel={copy.stepperDecrease}
+                onPress={() => stepDelta(-STEP)} style={s.stepButton}>
+                <Text style={s.stepButtonText}>−</Text>
+              </Pressable>
+              <Text style={s.editorValue} accessibilityLabel={copy.manualInputLabel}>
+                {formatNumber(stepper.value, locale)}
+              </Text>
+              <Pressable accessibilityRole="button"
+                accessibilityLabel={copy.stepperIncrease}
+                onPress={() => stepDelta(STEP)} style={s.stepButton}>
+                <Text style={s.stepButtonText}>+</Text>
+              </Pressable>
+            </View>
+            <View style={s.stepperActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
+                onPress={() => setStepper(null)} style={s.stepperAction}>
+                <Text style={s.stepButtonText}>{copy.cancel}</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
+                onPress={saveStepper} style={s.stepperAction}>
+                <Text style={s.stepButtonText}>{copy.manualSave}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -735,90 +819,60 @@ function GoalEditor({ locale, currentGoal, canSave, storageError, onApply }: {
 }
 
 /**
- * The manual-total editor for one date: shows the date's saved total, takes a
- * new whole-number value, and validates before anything saves. A save
- * replaces the date's total; removal takes the date back to the available
- * source. An invalid submission never reaches the record, and a refused save
- * (no loaded record, storage failure) never fakes success — the confirmation
- * note shows only after the stored record confirms the change.
+ * The mini duck in the Settings header (prototype v5): a small labeled duck
+ * that plays the poke — surprised frame plus a rising heart — and then
+ * follows itself home. Poking it never navigates directly: the return goes
+ * through the same back action the header button uses, so home's arrival
+ * waddle (#42's arrive()) plays exactly as on a button return. A busy duck
+ * ignores further taps until it has left. VoiceOver gets the same move as
+ * this labeled button; the visuals are the sighted extra.
  */
-function ManualPage({ nav, locale, onNavigate, manual, onApply, onRemove }: {
-  nav: NavigationState; locale: Locale; onNavigate: (action: NavigationAction) => void;
-  manual: ManualState; onApply: (dateKey: string, value: number) => void;
-  onRemove: (dateKey: string) => void;
+function MiniDuck({ frames, particles, label, onHome }: {
+  frames: PixelPetFrames; particles: PixelPetParticles;
+  label: string; onHome: () => void;
 }) {
-  const copy = getCopy(locale);
-  const dateKey = nav.manualDate;
-  // The editor is opened from a Progress row, so the date is one of the seven
-  // window dates; the label matches the row that opened it.
-  const dates = lastSevenLocalDates(new Date());
-  const windowIndex = dateKey === null
-    ? -1 : dates.findIndex((date) => localDateKey(date) === dateKey);
-  const label = windowIndex === 0 ? copy.dateToday
-    : windowIndex > 0 ? formatRowDate(dates[windowIndex], locale)
-    : dateKey ?? '';
-  const existing = manual.kind === 'ready' && manual.totals !== null && dateKey !== null
-    ? manualTotalForDate(manual.totals, dateKey)
-    : null;
-  const canSave = manual.kind === 'ready' && manual.totals !== null && dateKey !== null;
-  const storageError = manual.kind === 'ready' ? manual.error : null;
-  const [text, setText] = useState(() => existing === null ? '' : `${existing}`);
-  const [invalid, setInvalid] = useState(false);
-  const [savedValue, setSavedValue] = useState<number | null>(null);
-  const [removedAt, setRemovedAt] = useState(false);
-  const submit = () => {
-    if (!canSave) { setInvalid(false); setSavedValue(null); setRemovedAt(false); return; }
-    const result = parseManualTotalInput(text);
-    if (result.kind === 'error') { setInvalid(true); setSavedValue(null); setRemovedAt(false); return; }
-    setInvalid(false);
-    setRemovedAt(false);
-    setSavedValue(result.value);
-    onApply(dateKey!, result.value);
+  const [poked, setPoked] = useState(false);
+  const busy = useRef(false);
+  // The rising heart rides its own driver, started on the poke like the
+  // home duck's (PixelPet's playHeart) — the small version of the same burst.
+  const miniHeart = useRef(new Animated.Value(0)).current;
+  const poke = () => {
+    if (busy.current) return;
+    busy.current = true;
+    setPoked(true);
+    miniHeart.setValue(0);
+    Animated.timing(miniHeart, {
+      toValue: 1, duration: 750, easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+    setTimeout(() => {
+      setPoked(false);
+      onHome();
+    }, MINI_DUCK_HOME_MS);
   };
-  const remove = () => {
-    if (!canSave || existing === null) return;
-    setInvalid(false);
-    setSavedValue(null);
-    setRemovedAt(true);
-    onRemove(dateKey!);
-  };
-  const saved = savedValue !== null && savedValue === existing && storageError === null;
-  const removed = removedAt && existing === null && storageError === null;
   return (
-    <ScrollView contentContainerStyle={s.content}>
-      <Header title={copy.manualTitle} action={copy.backToSettings} label={copy.backToSettings}
-        onPress={() => onNavigate({ type: 'back' })} />
-      <View style={s.card}>
-        <Text style={s.rowTitle}>{label}</Text>
-        {existing !== null && (
-          <Text style={s.goal}>{formatNumber(existing, locale)} {copy.steps}</Text>
-        )}
-        <Text style={s.summary}>{copy.manualReplaces}</Text>
-        <Text style={s.muted}>{copy.manualInputLabel}</Text>
-        <TextInput
-          style={s.goalInput}
-          value={text}
-          onChangeText={setText}
-          accessibilityLabel={copy.manualInputLabel}
-          placeholder="0"
-          keyboardType="number-pad"
+    <Pressable accessibilityRole="button" accessibilityLabel={label}
+      onPress={poke} style={s.miniDuck}>
+      {poked && (
+        <Animated.Image
+          source={particles.heart}
+          style={[s.miniHeart, {
+            opacity: miniHeart.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] }),
+            transform: [{
+              translateY: miniHeart.interpolate({
+                inputRange: [0, 1], outputRange: [0, -MINI_DUCK_SIZE * 0.7],
+              }),
+            }],
+          }]}
         />
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
-          onPress={submit} style={s.goalSave}>
-          <Text style={s.goalSaveText}>{copy.manualSave}</Text>
-        </Pressable>
-        {existing !== null && (
-          <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
-            onPress={remove} style={s.manualRemove}>
-            <Text style={s.manualRemoveText}>{copy.manualRemove}</Text>
-          </Pressable>
-        )}
-        {invalid && <Text style={s.languageError}>{copy.manualInvalid}</Text>}
-        {storageError && <Text style={s.languageError}>{copy.manualStorageError}</Text>}
-        {saved && <Text style={s.goalSavedNote}>{copy.manualSaved}</Text>}
-        {removed && <Text style={s.goalSavedNote}>{copy.manualRemoved}</Text>}
-      </View>
-    </ScrollView>
+      )}
+      <Image
+        source={poked ? frames.surprised : frames.idle}
+        style={s.miniDuckImage}
+        resizeMode="contain"
+        fadeDuration={0}
+      />
+    </Pressable>
   );
 }
 
@@ -863,10 +917,6 @@ const s = StyleSheet.create({
     fontVariant: typeVariant.tabularNums, marginVertical: spacing.sm },
   intro: { color: colors.textMuted, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
     fontFamily: typeFace.text.regular, marginBottom: spacing.xxl },
-  progressRow: {
-    minHeight: 84, padding: spacing.gutter, marginBottom: spacing.xl, borderRadius: radius.row,
-    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
-  },
   rowTop: {
     flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg,
     justifyContent: 'space-between', alignItems: 'center',
@@ -874,13 +924,14 @@ const s = StyleSheet.create({
   rowTitle: { color: colors.text, fontSize: typeSize.body, fontFamily: typeFace.text.bold,
     flexShrink: 1 },
   rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold },
-  manualAction: {
-    minHeight: 48, marginTop: spacing.xl, paddingHorizontal: spacing.gutter, alignSelf: 'stretch',
-    alignItems: 'center', justifyContent: 'center', borderRadius: radius.control, borderWidth: 1,
-    borderColor: colors.borderSoft, backgroundColor: colors.accentSoft,
+  rowValueWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // The tappable date row (prototype v3) doubles as its own control: the
+  // 84-point card is the touch target, well past the 48-point floor.
+  progressRow: {
+    minHeight: 84, padding: spacing.gutter, marginBottom: spacing.xl, borderRadius: radius.row,
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    justifyContent: 'center',
   },
-  manualActionText: { color: colors.accentText, fontSize: typeSize.label,
-    fontFamily: typeFace.text.bold, textAlign: 'center' },
   list: { gap: spacing.xl, marginTop: spacing.gutter, alignSelf: 'stretch' },
   settingsRow: {
     minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -916,13 +967,34 @@ const s = StyleSheet.create({
     color: colors.accentText, fontSize: typeSize.caption, lineHeight: typeLeading.body,
     fontFamily: typeFace.text.bold, marginTop: spacing.md, textAlign: 'center',
   },
-  manualRemove: {
-    minHeight: 48, marginTop: spacing.md, paddingHorizontal: spacing.xxl,
-    alignItems: 'center', justifyContent: 'center', borderRadius: radius.action,
-    borderWidth: 1, borderColor: colors.danger,
+  headerSide: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  miniDuck: {
+    width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE, alignItems: 'center',
+    justifyContent: 'center',
   },
-  manualRemoveText: { color: colors.danger, fontSize: typeSize.label,
+  miniDuckImage: { width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE },
+  miniHeart: { position: 'absolute', width: MINI_DUCK_SIZE * 0.4,
+    height: MINI_DUCK_SIZE * 0.4 * (6 / 7), top: 0 },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: colors.overlayDim, alignItems: 'center', justifyContent: 'center' },
+  editorCard: { width: '82%', alignItems: 'center', padding: spacing.page,
+    borderRadius: radius.card, backgroundColor: colors.card, borderWidth: 1,
+    borderColor: colors.border },
+  alertTitle: { color: colors.text, fontSize: typeSize.heading, fontFamily: typeFace.text.bold },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl,
+    marginVertical: spacing.section },
+  stepButton: { minWidth: 56, minHeight: 48, paddingHorizontal: spacing.gutter,
+    alignItems: 'center', justifyContent: 'center', borderRadius: radius.control,
+    backgroundColor: colors.accent },
+  stepButtonText: { color: colors.text, fontSize: typeSize.heading,
     fontFamily: typeFace.text.bold },
+  editorValue: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
+    fontVariant: typeVariant.tabularNums, minWidth: 96, textAlign: 'center' },
+  stepperActions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch',
+    justifyContent: 'center' },
+  stepperAction: { minHeight: 48, flex: 1, maxWidth: 150, alignItems: 'center',
+    justifyContent: 'center', borderRadius: radius.action, borderWidth: 1,
+    borderColor: colors.borderSoft, backgroundColor: colors.accentSoft },
   divider: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border,
     marginTop: spacing.section, marginBottom: spacing.section },
 });

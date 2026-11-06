@@ -11,7 +11,7 @@ test('home is the only root: settings opens from home and returns through settin
   const initial = createNavigationState();
   assert.equal(initial.screen, 'today');
   const settings = navigate(initial, { type: 'open-settings' });
-  assert.deepEqual(settings, { screen: 'settings', manualDate: null });
+  assert.deepEqual(settings, { screen: 'settings' });
   const goal = navigate(settings, { type: 'open-destination', destination: 'goal' });
   assert.equal(navigate(goal, { type: 'back' }).screen, 'settings');
   assert.equal(navigate(navigate(goal, { type: 'back' }), { type: 'back' }).screen, 'today');
@@ -85,24 +85,63 @@ test('interactive controls have accessible names and at least 48-point touch tar
   const pressables = Array.from(appSource.matchAll(/<Pressable\b([\s\S]*?)>/g), (match) => match[1]);
   // 4 shell controls (the header back actions, the settings rows, and the
   // device-language row on the language page)
-  // + the per-date manual-entry control in the Settings date rows
-  // + the goal editor's save control
-  // + the manual editor's save and remove controls.
-  assert.equal(pressables.length, 8);
+  // + the seven tappable date rows (one Pressable in source) and the stepper
+  // popup's four controls (−, +, Cancel, Save) — issue #44
+  // + the header's mini duck
+  // + the goal editor's save control.
+  assert.equal(pressables.length, 11);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
   }
 
-  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'manualAction',
-    'manualRemove', 'goalSave']) {
+  for (const styleName of ['headerAction', 'settingsRow', 'languageRow', 'progressRow',
+    'stepButton', 'stepperAction', 'goalSave']) {
     const style = appSource.match(new RegExp(`${styleName}:\\s*\\{[^}]*minHeight:\\s*(\\d+)`));
     assert.ok(style, `${styleName} must declare a touch target`);
     assert.ok(Number(style[1]) >= 48, `${styleName} must be at least 48 points high`);
   }
 
+  // The mini duck sizes through the MINI_DUCK_SIZE constant (48pt, past the
+  // 44pt HIG minimum) rather than a literal in the style sheet.
+  const miniDuck = appSource.match(/miniDuck:\s*\{[^}]*\}/);
+  assert.ok(miniDuck, 'the mini duck style exists');
+  assert.match(miniDuck[0], /width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE/);
+  assert.match(appSource, /const MINI_DUCK_SIZE = 48;/,
+    'the mini duck clears the 44pt HIG minimum');
+
   // Header actions clear the 44pt width minimum too (issue #42 supersedes #24).
   const headerAction = appSource.match(/headerAction:\s*\{[^}]*\}/);
   assert.ok(headerAction, 'the header action style exists');
   assert.match(headerAction[0], /minWidth:\s*44/, 'header actions are at least 44 points wide');
+});
+
+test('the date rows open the in-screen stepper; the manual editor navigation is gone', () => {
+  // Each date row is its own control opening the stepper for that exact date.
+  assert.match(appSource, /onPress=\{\(\) => onOpenStepper\(dateKey\)\}/);
+  // The stepper −/+ changes by 100 with a 0 floor and the store's ceiling, so
+  // Save always persists a value the data owner accepts.
+  assert.match(appSource, /Math\.min\(MAX_MANUAL_TOTAL, Math\.max\(0, current\.value \+ delta\)\)/);
+  // Save writes through the manual-totals owner; Cancel throws the draft away.
+  assert.match(appSource, /onApply\(stepper\.dateKey, stepper\.value\)/);
+  assert.match(appSource, /onPress=\{\(\) => setStepper\(null\)\}/);
+  // The popup is in-screen state, not navigation: no manual screen, no editor
+  // page, and the ring math never entered the shell.
+  assert.doesNotMatch(appSource, /open-manual|ManualPage|manualDate/);
+  assert.doesNotMatch(navSource, /'manual'|open-manual|manualDate/);
+  assert.doesNotMatch(appSource, /litSegments|segmentAngle|RING_SEGMENTS/,
+    'no ring renders anywhere (prototype v3 directive)');
+});
+
+test('the mini duck sits in the Settings header and returns home through the back action', () => {
+  const settings = appSource.slice(appSource.indexOf('function SettingsPage'),
+    appSource.indexOf('function DestinationPage'));
+  // The duck rides the header's side slot beside the back action (prototype v5).
+  assert.match(settings, /side=\{<MiniDuck /);
+  // Its return is the back action, so home's arrival waddle (#42) plays.
+  assert.match(settings, /onHome=\{\(\) => onNavigate\(\{ type: 'back' \}\)\}/);
+  // The duck plays the poke: the surprised frame, the heart, then home.
+  assert.match(appSource, /poked \? frames\.surprised : frames\.idle/);
+  assert.match(appSource, /source=\{particles\.heart\}/);
+  assert.match(appSource, /MINI_DUCK_HOME_MS\)/);
 });

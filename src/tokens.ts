@@ -28,6 +28,7 @@ export const colors = {
   ringLit: '#5E9B7F', // lit ring segments; selected-row outline
   ringTrack: '#E8DDCB', // unlit ring segments
   danger: '#8D3E34', // destructive actions
+  overlayDim: '#00000047', // in-screen popup scrim (prototype .overlay rgba(0,0,0,.28))
 } as const;
 
 /** Corner radius scale (pt): control 14 → tab 15 → action 16 → row 17 → card 24. */
