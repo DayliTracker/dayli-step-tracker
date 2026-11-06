@@ -10,7 +10,7 @@ test('tokens pin the approved palette values exactly', () => {
     canvas: '#FAF3E6', card: '#FFFDF8', border: '#E8DDCB', borderSoft: '#D8CCB9',
     text: '#5B4634', textMuted: '#806A55', accent: '#C8EBDD', accentSoft: '#F4FBF7',
     accentText: '#326D52', selection: '#E8F5EE', ringLit: '#5E9B7F',
-    ringTrack: '#E8DDCB', danger: '#8D3E34',
+    ringTrack: '#E8DDCB', danger: '#8D3E34', overlayDim: '#00000047',
   });
 });
 

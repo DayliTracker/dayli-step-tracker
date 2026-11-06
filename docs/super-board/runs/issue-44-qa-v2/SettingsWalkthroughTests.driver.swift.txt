@@ -1,0 +1,261 @@
+import XCTest
+
+/// QA driver for issue #44 (PR #53): the Blocked card's own AC1–AC3 walkthrough,
+/// re-driven live — swipe-left entry → Settings, date-row taps → stepper
+/// (±100, 0 floor, Save/Cancel), mini-duck poke → home. XCUITest streams real
+/// touch events, which the host's idb companion cannot (HID drags dead).
+/// Elements are addressed by the app's accessibility labels, never pixels.
+final class SettingsWalkthroughTests: XCTestCase {
+
+  private var app: XCUIApplication!
+
+  override func setUpWithError() throws {
+    continueAfterFailure = false
+    app = XCUIApplication()
+    // The QA sim's device locale is vi; the assertions below use the English
+    // copy from src/localization.ts, so pin the app's process locale to en.
+    app.launchArguments += ["-AppleLanguages", "(en-US)", "-AppleLocale", "en_US"]
+    app.launch()
+  }
+
+  // MARK: helpers
+
+  /// Waits for the home screen's accessible group (its label is the today
+  /// sentence from src/today.ts todayA11yLabel).
+  private func homeGroup() -> XCUIElement {
+    let group = app.otherElements.matching(
+      NSPredicate(format: "label CONTAINS 'Daily goal: 8,000 steps.'")
+    ).firstMatch
+    XCTAssertTrue(group.waitForExistence(timeout: 10), "home group not found")
+    return group
+  }
+
+  private func openSettings() {
+    app.swipeLeft()
+    let title = app.staticTexts["Settings"]
+    XCTAssertTrue(title.waitForExistence(timeout: 8), "Settings screen did not open after swipe-left")
+  }
+
+  /// Scrolls the Settings scroll until the element is hittable (vertical
+  /// swipes never navigate — the pan is horizontal-only, App.tsx:417).
+  private func makeHittable(_ element: XCUIElement) {
+    guard !element.isHittable else { return }
+    let scroll = app.scrollViews.firstMatch
+    for _ in 0..<6 where element.exists && !element.isHittable {
+      scroll.swipeUp()
+    }
+    XCTAssertTrue(element.isHittable, "element never became hittable: \(element.description)")
+  }
+
+  private func snap(_ name: String) {
+    let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+    attachment.name = name
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
+
+  /// Reads "Steps for this date: N" out of the stepper readout's label.
+  private func stepperValue() -> Int {
+    let readout = app.staticTexts.matching(
+      NSPredicate(format: "label BEGINSWITH 'Steps for this date:'")
+    ).firstMatch
+    XCTAssertTrue(readout.waitForExistence(timeout: 5), "stepper readout not found")
+    let label = readout.label
+    guard let range = label.range(of: ": "),
+          let value = Int(label[range.upperBound...].trimmingCharacters(in: .whitespaces)) else {
+      XCTFail("unreadable stepper value from label: \(label)")
+      return -1
+    }
+    return value
+  }
+
+  private func tapStep(_ label: String, times: Int) {
+    for _ in 0..<times {
+      let button = app.buttons[label]
+      XCTAssertTrue(button.waitForExistence(timeout: 5), "missing stepper button \(label)")
+      button.tap()
+    }
+  }
+
+  private func todayRow() -> XCUIElement {
+    let row = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH 'Today.'")
+    ).firstMatch
+    makeHittable(row)
+    return row
+  }
+
+  private func anyOtherDateRow() -> XCUIElement {
+    let rows = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS 'goal: 8,000 steps.' AND NOT label BEGINSWITH 'Today.'")
+    )
+    XCTAssertTrue(rows.count >= 6, "expected six non-today date rows, got \(rows.count)")
+    let row = rows.element(boundBy: 0)
+    makeHittable(row)
+    return row
+  }
+
+  private func waitForStepper(_ shouldExist: Bool, _ context: String) {
+    let save = app.buttons["Save total"]
+    if shouldExist {
+      XCTAssertTrue(save.waitForExistence(timeout: 5), "stepper did not open (\(context))")
+    } else {
+      let gone = NSPredicate(format: "exists == 0")
+      let expectation = XCTNSPredicateExpectation(predicate: gone, object: save)
+      XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed,
+                     "stepper did not close (\(context))")
+    }
+  }
+
+  // MARK: AC1 — rows show date + total only; tap opens that date's stepper
+
+  func test_a_ac1_date_rows_and_stepper_opens_for_that_exact_date() throws {
+    let home = homeGroup()
+    XCTAssertTrue(home.exists, "home did not render")
+    snap("ac1-01-home-before-swipe")
+
+    openSettings()
+    snap("ac1-02-settings-after-swipe-left")
+
+    let intro = app.staticTexts["Today and your previous six local days."]
+    XCTAssertTrue(intro.waitForExistence(timeout: 5), "Progress intro not found")
+
+    let rows = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS 'goal: 8,000 steps.'")
+    )
+    XCTAssertEqual(rows.count, 7, "expected exactly seven date rows")
+    for i in 0..<7 {
+      let label = rows.element(boundBy: i).label
+      XCTAssertTrue(label.contains("Your step total will appear when step data is connected.")
+                    || label.range(of: "[0-9] steps", options: .regularExpression) != nil,
+                    "row \(i) shows neither a truthful no-data state nor a total: \(label)")
+    }
+    // Fresh container: all seven rows truthfully show '—'.
+    // The '—' value text is a child of each accessible row, so it never
+    // appears as its own staticText — the row's label is the truthful
+    // sentence instead (checked above). The visual '—' is captured in the
+    // ac1-02 settings screenshot.
+
+    todayRow().tap()
+    waitForStepper(true, "AC1 today row tap")
+    XCTAssertTrue(app.staticTexts.matching(
+      NSPredicate(format: "label == 'Today'")
+    ).firstMatch.exists, "stepper did not open for Today")
+    XCTAssertEqual(stepperValue(), 0, "Today stepper did not start at the saved total (0)")
+    snap("ac1-03-stepper-open-for-today")
+
+    // The popup is for that exact date: it opened from the Today row and its
+    // date label matches the row that opened it.
+    tapStep("Cancel", times: 1)
+    waitForStepper(false, "AC1 cancel")
+  }
+
+  // MARK: AC2 — ±100 with 0 floor; Save persists; Cancel changes nothing
+
+  func test_b_ac2_step_bounds_save_persists_cancel_is_a_noop() throws {
+    _ = homeGroup()
+    openSettings()
+
+    // Today: draft starts at the saved total (0 on this fresh container).
+    todayRow().tap()
+    waitForStepper(true, "AC2 today row")
+    let start = stepperValue()
+
+    // +100 per tap.
+    tapStep("Add 100 steps", times: 1)
+    XCTAssertEqual(stepperValue(), min(start + 100, 100_000), "+ must step by 100")
+
+    // −100 per tap with a 0 floor: from start+100, three subtracts cannot go
+    // below zero when start == 0.
+    tapStep("Subtract 100 steps", times: 3)
+    XCTAssertEqual(stepperValue(), max(start + 100 - 300, 0), "− must step by 100 and floor at 0")
+    snap("ac2-01-floor-at-zero")
+
+    // Build 300 and Save.
+    tapStep("Add 100 steps", times: 3)
+    XCTAssertEqual(stepperValue(), 300, "three adds from 0 must read 300")
+    app.buttons["Save total"].tap()
+    waitForStepper(false, "AC2 save")
+
+    let savedRow = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS '300 steps.' AND label CONTAINS 'Source: Manual.'")
+    ).firstMatch
+    XCTAssertTrue(savedRow.waitForExistence(timeout: 5), "Today row did not reflect the saved 300")
+    snap("ac2-02-row-reflects-300")
+
+    // Cancel on ANOTHER row (the Blocked template's own step): change the
+    // draft, throw it away, reopen — the row keeps its previous truth.
+    let other = anyOtherDateRow()
+    let labelBefore = other.label
+    other.tap()
+    waitForStepper(true, "AC2 other row")
+    XCTAssertEqual(stepperValue(), 0, "other date's draft must start from its own saved total")
+    tapStep("Add 100 steps", times: 2)
+    XCTAssertEqual(stepperValue(), 200, "other date draft must step by 100")
+    snap("ac2-03-draft-200-before-cancel")
+    tapStep("Cancel", times: 1)
+    waitForStepper(false, "AC2 cancel on other row")
+
+    let otherAfter = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS 'goal: 8,000 steps.' AND NOT label BEGINSWITH 'Today.'")
+    ).firstMatch
+    XCTAssertEqual(otherAfter.label, labelBefore, "Cancel changed the other row")
+    otherAfter.tap()
+    waitForStepper(true, "AC2 reopen other row")
+    XCTAssertEqual(stepperValue(), 0, "Cancel must throw the draft away — reopen shows the saved value")
+    tapStep("Cancel", times: 1)
+    waitForStepper(false, "AC2 reopen cancel")
+
+    // Home reflects the saved Today total.
+    app.buttons["Back to Today"].firstMatch.tap()
+    let home = homeGroup()
+    XCTAssertTrue(home.label.contains("300 steps."), "home label must reflect the saved 300: \(home.label)")
+    XCTAssertTrue(home.label.contains("Source: Manual."), "home label must name the manual source: \(home.label)")
+    // The count pill is a child of the accessible home group, so it has no
+    // own staticText element — the visible '300' is captured in the screenshot.
+    snap("ac2-04-home-reflects-300")
+  }
+
+  // MARK: AC3 — mini duck poke: labeled control, plays, returns home
+
+  func test_c_ac3_mini_duck_poke_returns_home() throws {
+    _ = homeGroup()
+    openSettings()
+
+    // VoiceOver's equivalent control: the mini duck is a labeled button.
+    let duck = app.buttons["Poke the duck to go home"]
+    XCTAssertTrue(duck.waitForExistence(timeout: 5), "mini duck has no labeled button control")
+    snap("ac3-01-settings-with-mini-duck")
+
+    duck.tap()
+    // The surprised + heart play is transient animation; the observable
+    // behavior is the navigation home (the arrival waddle plays there).
+    usleep(400_000)
+    snap("ac3-02-poke-reaction")
+
+    let home = homeGroup()
+    XCTAssertFalse(app.staticTexts["Settings"].exists, "poke must leave Settings")
+    XCTAssertTrue(home.exists, "poke must return home")
+    snap("ac3-03-home-after-poke")
+  }
+
+  // MARK: AC4 — no ring renders anywhere
+
+  func test_d_ac4_no_ring_elements_on_any_screen() throws {
+    let home = homeGroup()
+    for element in app.descendants(matching: .any).allElementsBoundByIndex.prefix(80) {
+      let label = element.label.lowercased()
+      XCTAssertFalse(label.contains("ring") && !label.contains("string"),
+                     "ring-like element on home: \(element.description)")
+    }
+    _ = home
+    snap("ac4-01-home-ring-free")
+    openSettings()
+    for element in app.descendants(matching: .any).allElementsBoundByIndex.prefix(80) {
+      let label = element.label.lowercased()
+      XCTAssertFalse(label.contains("ring") && !label.contains("string"),
+                     "ring-like element on settings: \(element.description)")
+    }
+    snap("ac4-02-settings-ring-free")
+  }
+}

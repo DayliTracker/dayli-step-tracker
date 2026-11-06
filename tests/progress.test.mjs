@@ -91,56 +91,46 @@ test('a row slot ending in !, ? or … keeps its own terminator and gains no dou
   assert.doesNotMatch(query, /\.\./, 'slot copy never doubles the sentence period');
 });
 
-test('manual-entry button stays outside the row a11y group so VoiceOver can focus it', () => {
+test('each date row is its own labeled control carrying the full sentence', () => {
   const mapStart = appSource.indexOf('dates.map(');
   assert.ok(mapStart >= 0, 'Progress maps the seven dates');
   const block = appSource.slice(mapStart, appSource.indexOf('function SettingsPage'));
-  const labelCall = block.indexOf('accessibilityLabel={progressRowA11yLabel(');
-  assert.ok(labelCall >= 0, 'the row a11y group exists');
-  const groupOpen = block.lastIndexOf('<View', labelCall);
-
-  // Walk the JSX from the accessible group's opening <View to its matching
-  // </View>, then require the manual-entry Pressable to live outside it —
-  // an accessible container flattens descendants on iOS, so a button inside
-  // it disappears from the VoiceOver tree (review finding R1).
-  let depth = 0;
-  let close = -1;
-  for (const token of block.slice(groupOpen).matchAll(/<\/?View\b/g)) {
-    depth += token[0].startsWith('</') ? -1 : 1;
-    if (depth === 0) {
-      close = groupOpen + token.index + token[0].length;
-      break;
-    }
-  }
-  assert.ok(close > 0, 'the accessible group closes inside the row block');
-  const group = block.slice(groupOpen, close);
-  assert.match(group, /accessibilityLabel=\{progressRowA11yLabel\(/);
-  assert.doesNotMatch(group, /<Pressable\b/, 'no control is flattened into the a11y group');
-
-  const button = block.indexOf('<Pressable', close);
-  assert.ok(button > 0, 'the manual-entry button follows the group as a sibling');
-  assert.match(block.slice(button, button + 240), /accessibilityRole="button"/);
-  assert.match(block.slice(button, button + 240), /accessibilityLabel=/);
+  // The row Pressable is the control (prototype v3's role="button" row): the
+  // full screen-reader sentence rides the same element that opens the
+  // stepper, so no control can be flattened away by an accessible container.
+  const pressable = block.indexOf('<Pressable');
+  assert.ok(pressable >= 0, 'the date row is a Pressable');
+  const row = block.slice(pressable, block.indexOf('style={s.progressRow}', pressable));
+  assert.match(row, /accessibilityRole="button"/);
+  assert.match(row, /accessibilityLabel=\{progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)\}/);
+  assert.match(row, /onPress=\{\(\) => onOpenStepper\(dateKey\)\}/);
 });
 
-test('manual-entry copy exists in both locales and no preview language remains', () => {
+test('stepper copy exists in both locales and no preview or removed-editor language remains', () => {
   for (const locale of ['en', 'vi']) {
     const copy = getCopy(locale);
-    assert.ok(copy.addManualTotal.trim());
-    assert.ok(copy.editManualTotal.trim());
-    assert.ok(copy.manualTitle.trim());
+    assert.ok(copy.manualSave.trim());
     assert.ok(copy.manualInputLabel.trim());
-    assert.match(copy.manualReplaces, locale === 'en' ? /until you remove it/i : /cho đến khi bạn xóa nó/i);
+    assert.ok(copy.manualStorageError.trim());
+    assert.ok(copy.stepperDecrease.trim());
+    assert.ok(copy.stepperIncrease.trim());
+    assert.ok(copy.miniDuckPoke.trim());
   }
-  assert.notEqual(getCopy('en').addManualTotal, getCopy('vi').addManualTotal);
-  assert.notEqual(getCopy('en').manualTitle, getCopy('vi').manualTitle);
+  assert.notEqual(getCopy('en').manualSave, getCopy('vi').manualSave);
+  assert.notEqual(getCopy('en').stepperDecrease, getCopy('vi').stepperDecrease);
+  // The manual editor page is gone: its page copy went with it.
+  for (const key of ['manualTitle', 'manualReplaces', 'manualRemove', 'manualSaved',
+    'manualRemoved', 'manualInvalid', 'addManualTotal', 'editManualTotal']) {
+    assert.equal(getCopy('en')[key], undefined, `${key} left with the manual editor`);
+    assert.equal(getCopy('vi')[key], undefined, `${key} left with the manual editor`);
+  }
   // The phase-1 preview strings are gone from every surface.
   assert.ok(!Object.keys(getCopy('en')).some((key) => key.startsWith('manualPreview')));
   assert.ok(!Object.values(getCopy('en')).some((value) => /nothing was saved/i.test(value)));
   assert.ok(!Object.values(getCopy('vi')).some((value) => /chưa có gì được lưu/i.test(value)));
 });
 
-test('Progress wires the seven local dates, per-date manual affordance, and truthful slots', () => {
+test('Progress wires the seven local dates, the stepper affordance, and truthful slots', () => {
   assert.match(appSource, /lastSevenLocalDates\(new Date\(\)\)/);
   assert.match(appSource, /key=\{dateKey\}/);
   assert.match(
@@ -148,25 +138,25 @@ test('Progress wires the seven local dates, per-date manual affordance, and trut
     /progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)/,
     'each row announces its own snapshot and per-date goal, not a constant',
   );
-  assert.match(
-    appSource,
-    /accessibilityLabel=\{`\$\{total !== null \? copy\.editManualTotal : copy\.addManualTotal\} — \$\{label\}`\}/,
-    'each date carries its own manual-entry control name',
-  );
   assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/,
     'a row with a manual total renders it as the Manual source');
   assert.match(appSource, /\{ kind: 'unavailable' \}/,
     'a row with no data passes the truthful unavailable snapshot');
-  assert.match(appSource, /`— \$\{copy\.steps\}`/, 'an absent total renders the em-dash slot, not a number');
+  assert.match(appSource, /\? formatNumber\(total, locale\) : '—'/,
+    'an absent total renders the em-dash slot, not a number');
   assert.doesNotMatch(appSource, /manualPreview/, 'the preview alert is gone');
-  assert.match(appSource, /type: 'open-manual', dateKey/, 'the row control opens the manual editor');
+  // The draft starts from the saved total, or a truthful 0 for an empty date.
+  assert.match(appSource, /manualTotalForDate\(manual\.totals, dateKey\)/);
 });
 
-test('rows wrap at narrow widths and the manual control keeps a 48-point target', () => {
+test('rows wrap at narrow widths and the date row keeps a 48-point target', () => {
   const rowTop = appSource.match(/rowTop:\s*\{[^}]*\}/);
   assert.ok(rowTop, 'rowTop style must exist');
   assert.match(rowTop[0], /flexWrap:\s*'wrap'/, 'long bilingual labels wrap instead of clipping');
-  const manual = appSource.match(/manualAction:\s*\{[^}]*minHeight:\s*(\d+)/);
-  assert.ok(manual, 'manualAction must declare a touch target');
-  assert.ok(Number(manual[1]) >= 48, 'manualAction must be at least 48 points high');
+  const progressRow = appSource.match(/progressRow:\s*\{[^}]*minHeight:\s*(\d+)/);
+  assert.ok(progressRow, 'progressRow must declare a touch target');
+  assert.ok(Number(progressRow[1]) >= 48, 'progressRow must be at least 48 points high');
+  const stepButton = appSource.match(/stepButton:\s*\{[^}]*minHeight:\s*(\d+)/);
+  assert.ok(stepButton, 'stepButton must declare a touch target');
+  assert.ok(Number(stepButton[1]) >= 48, 'stepButton must be at least 48 points high');
 });

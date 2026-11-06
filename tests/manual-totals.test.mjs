@@ -252,9 +252,10 @@ test('the shell wires manual totals, Today, and the real clear-data flow', () =>
   assert.doesNotMatch(appSource, /useState<TodaySnapshot>\(\{ kind: 'unavailable' \}\)/);
   assert.match(appSource, /manualTotalForDate\(manual\.totals, todayKey\)/);
   assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/);
-  // Manual saves refuse without a loaded base, and the store window guards them.
+  // Manual saves refuse without a loaded base, and the stepper's clamp keeps
+  // every draft inside the bounds the store accepts (issue #44).
   assert.match(appSource, /if \(manual\.kind !== 'ready' \|\| manual\.totals === null\) return;/);
-  assert.match(appSource, /parseManualTotalInput\(text\)/);
+  assert.match(appSource, /Math\.min\(MAX_MANUAL_TOTAL, Math\.max\(0, current\.value \+ delta\)\)/);
   assert.match(appSource, /setManualTotal\(manual\.totals, dateKey, value, new Date\(\)\)/);
   // Clear-data is real: the confirmation removes the documents behind an
   // explicit destructive confirm, and a failure surfaces on Settings.
@@ -265,17 +266,16 @@ test('the shell wires manual totals, Today, and the real clear-data flow', () =>
   assert.match(appSource, /<Text style=\{s\.disclosure\}>\{copy\.dataDisclosure\}<\/Text>/);
 });
 
-test('navigation reaches the manual editor from a Settings date row and back', () => {
+test('the stepper is in-screen state: navigation has no manual screen and back still works', () => {
   const initial = createNavigationState();
   const settings = navigate(initial, { type: 'open-settings' });
-  const manual = navigate(settings, { type: 'open-manual', dateKey: '2026-10-31' });
-  assert.equal(manual.screen, 'manual');
-  assert.equal(manual.manualDate, '2026-10-31');
-  assert.equal(navigate(manual, { type: 'back' }).screen, 'settings',
-    'the editor returns through Settings, the only screen that opens it');
-  // The editor cannot be opened from home or the destinations.
-  assert.equal(
-    navigate(initial, { type: 'open-manual', dateKey: '2026-10-31' }), initial);
+  assert.deepEqual(settings, { screen: 'settings' });
+  assert.equal(navigate(settings, { type: 'back' }).screen, 'today');
   const goal = navigate(settings, { type: 'open-destination', destination: 'goal' });
-  assert.equal(navigate(goal, { type: 'open-manual', dateKey: '2026-10-31' }), goal);
+  assert.equal(navigate(goal, { type: 'back' }).screen, 'settings',
+    'the destinations still return through Settings');
+  // An unknown action matches no case and changes nothing (the stepper never
+  // navigates; a draft save writes the store in place).
+  assert.equal(
+    navigate(settings, { type: 'open-nonexistent' }), undefined);
 });
