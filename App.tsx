@@ -698,7 +698,10 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
                 onPress={() => stepDelta(-STEP)} style={s.stepButton}>
                 <Text style={s.stepButtonText}>−</Text>
               </Pressable>
-              <Text style={s.editorValue} accessibilityLabel={copy.manualInputLabel}>
+              {/* The readout's label carries the number — a label of copy
+                  alone would hide the value from VoiceOver. */}
+              <Text style={s.editorValue}
+                accessibilityLabel={`${copy.manualInputLabel}: ${formatNumber(stepper.value, locale)}`}>
                 {formatNumber(stepper.value, locale)}
               </Text>
               <Pressable accessibilityRole="button"

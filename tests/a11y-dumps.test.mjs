@@ -141,3 +141,74 @@ test('preview alerts say nothing is saved or deleted (AC4 placeholder honesty)',
   assert.equal(byLabel(clear, 'Hủy', 'Button').length, 1);
   assert.equal(byLabel(clear, 'Đã hiểu', 'Button').length, 1);
 });
+
+// ---------------------------------------------------------------------------
+// Issue #44 build evidence — the Settings stepper, mini duck, and tappable
+// date rows. Captured with `idb ui describe-all` on the same iPhone 17
+// Simulator geometry (402x874) from the issue branch head, in
+// docs/super-board/runs/issue-44-build-v1/.
+
+const BUILD_DIR = 'docs/super-board/runs/issue-44-build-v1';
+const loadBuild = (name) => JSON.parse(readFileSync(`${BUILD_DIR}/${name}.json`, 'utf8'));
+
+test('#44 Settings: seven tappable date rows carry the full sentence as one control', () => {
+  const d = loadBuild('after-a11y-settings');
+  const rows = d.filter((e) => e.type === 'Button' && (e.frame?.height ?? 0) >= 80
+    && /Your step total will appear|steps\./.test(e.AXLabel ?? ''));
+  assert.equal(rows.length, 7, 'the seven dates are seven buttons');
+  for (const row of rows) {
+    assert.match(row.AXLabel, /Daily goal: 8,000 steps/);
+    assert.match(row.AXLabel, /Source|will appear/);
+  }
+  // The separate manual-entry buttons are gone: the row itself is the control.
+  assert.equal(d.filter((e) => /Add manual total|Edit manual total/.test(e.AXLabel ?? '')).length, 0,
+    'no per-row editor buttons remain');
+});
+
+test('#44 Settings: the mini duck is a labeled 44pt+ control and no ring renders', () => {
+  const d = loadBuild('after-a11y-settings');
+  const duck = byLabel(d, 'Poke the duck to go home', 'Button');
+  assert.equal(duck.length, 1, 'the mini duck is one labeled button');
+  assert.ok(duck[0].frame.width >= 44 && duck[0].frame.height >= 44,
+    `the duck target is 44pt+ (${duck[0].frame.width}x${duck[0].frame.height})`);
+  // No ring element anywhere: the old ring rendered as a 190pt-wide group.
+  for (const name of ['after-a11y-settings', 'after-a11y-home-saved']) {
+    assert.equal(loadBuild(name).filter((e) => e.frame?.width === 190).length, 0,
+      `${name}: no ring element`);
+  }
+});
+
+test('#44 dumps pass the geometric a11y checks (43pt floor)', () => {
+  for (const name of ['after-a11y-settings', 'after-a11y-settings-saved', 'after-a11y-stepper',
+    'after-a11y-home-saved']) {
+    const result = checkDump(loadBuild(name), { minTarget: 43 });
+    assert.deepEqual(result.failures, [], `${name}: ${result.failures.join('; ')}`);
+  }
+});
+
+test('#44 stepper popup: VoiceOver sees only the popup, value included', () => {
+  const d = loadBuild('after-a11y-stepper');
+  assert.ok(byLabel(d, 'Subtract 100 steps', 'Button').length === 1);
+  assert.ok(byLabel(d, 'Add 100 steps', 'Button').length === 1);
+  assert.ok(byLabel(d, 'Cancel', 'Button').length === 1);
+  assert.ok(byLabel(d, 'Save total', 'Button').length === 1);
+  const value = d.find((e) => /Steps for this date/.test(e.AXLabel ?? ''));
+  assert.ok(value, 'the value readout exists');
+  assert.match(value.AXLabel, /Steps for this date: \d[\d,]*$/, 'the readout carries the number');
+  // accessibilityViewIsModal hides the Settings page behind the popup.
+  assert.equal(byLabel(d, 'Back to Today', 'Button').length, 0);
+  assert.equal(d.filter((e) => e.type === 'Button').length, 4,
+    'the popup exposes exactly its four controls');
+});
+
+test('#44 saving through the stepper updates the row and home', () => {
+  const settings = loadBuild('after-a11y-settings-saved');
+  const row = settings.find((e) => (e.AXLabel ?? '').startsWith('Today.'));
+  assert.ok(row, 'the Today row exists');
+  assert.match(row.AXLabel, /300 steps/);
+  assert.match(row.AXLabel, /Source: Manual/);
+  const home = loadBuild('after-a11y-home-saved');
+  const group = home.find((e) => e.type === 'GenericElement' && /300 steps/.test(e.AXLabel ?? ''));
+  assert.ok(group, 'home shows the saved total');
+  assert.match(group.AXLabel, /Source: Manual/);
+});
