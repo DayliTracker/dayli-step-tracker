@@ -1,0 +1,14 @@
+AC5 storage inspection, QA v2 (sim iPhone 18 Pro, app com.daylitracker.dayli at 27d2605).
+Method as v1: read RCTAsyncLocalStorage_V1/manifest.json between interactions.
+
+With a manual total saved on Today (2026-11-08) — read between Save and Remove:
+{
+    "dayli.health-decisions.v1": "{\"decision\":\"skipped\"}",
+    "dayli.manual-totals.v1": "{\"totals\":{\"2026-11-08\":100}}"
+}
+
+Immediately after tapping the stepper's Remove total:
+{
+    "dayli.health-decisions.v1": "{\"decision\":\"skipped\"}",
+    "dayli.manual-totals.v1": "{\"totals\":{}}"
+}
