@@ -2,20 +2,25 @@ import type { StorageBackend, StorageResult } from './preferences';
 import { GOALS_KEY } from './goals.ts';
 import { MANUAL_TOTALS_KEY } from './manual-totals.ts';
 import { PREFERENCES_KEY } from './preferences.ts';
+import { HEALTH_DECISIONS_KEY } from './healthkit.ts';
 
 /**
  * Clear-data — the confirmed reset of exactly the app's local documents:
- * preferences (language override), goal history, manual totals, and cached
- * summaries. No cached-summary document exists yet (phase-02 spec: none is
- * written until a summary feature needs one), so the key list carries the
- * three stored documents; a future cache key joins this list, never a second
- * reset path. Health permissions are an operating-system concern — this
- * module only deletes app documents and never touches permissions.
+ * preferences (language override), goal history, manual totals, the Health
+ * permission decision record, and cached summaries. No cached-summary
+ * document exists yet (phase-02 spec: none is written until a summary feature
+ * needs one), so the key list carries the four stored documents; a future
+ * cache key joins this list, never a second reset path. Health permissions
+ * are an operating-system concern — this module only deletes app documents
+ * and never touches the system grants; clearing the decision record lets the
+ * user walk the explain-before-request flow again by their own choice, and
+ * the system sheet itself appears only once per install.
  */
 export const LOCAL_DATA_KEYS: readonly string[] = [
   PREFERENCES_KEY,
   GOALS_KEY,
   MANUAL_TOTALS_KEY,
+  HEALTH_DECISIONS_KEY,
 ];
 
 /**

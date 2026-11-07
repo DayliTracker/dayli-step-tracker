@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert, Animated, Easing, GestureResponderEvent, Image, PanResponder, Pressable,
+  Alert, Animated, Easing, GestureResponderEvent, Image, Linking, Modal, PanResponder, Pressable,
   SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
@@ -31,6 +31,12 @@ import {
   loadManualTotals, saveManualTotals, setManualTotal,
   manualTotalForDate, MAX_MANUAL_TOTAL, DEFAULT_MANUAL_TOTALS, type ManualTotals,
 } from './src/manual-totals';
+import {
+  loadHealthDecisions, saveHealthDecisions, permissionState,
+  shouldShowFirstLaunchExplanation, DEFAULT_HEALTH_DECISIONS,
+  type HealthDecisions, type HealthPermissionState,
+} from './src/healthkit';
+import { getDayliHealthKit } from './modules/dayli-health-kit';
 import {
   formatRowDate, lastSevenLocalDates, localDateKey, progressRowA11yLabel,
 } from './src/progress';
@@ -104,12 +110,32 @@ type ManualState =
   | { kind: 'loading' }
   | { kind: 'ready'; totals: ManualTotals | null; error: string | null };
 
+/**
+ * The Health permission decision record after launch. `decisions` is null
+ * only when the stored record could not be read — the reason is surfaced to
+ * the Health page and the first-launch explanation stays closed, never opened
+ * on an unknown record (that could re-ask someone whose stored skip is
+ * unreadable).
+ */
+type HealthState =
+  | { kind: 'loading' }
+  | { kind: 'ready'; decisions: HealthDecisions | null; error: string | null };
+
 export default function App() {
   const [nav, setNav] = useState(createNavigationState);
   const [prefs, setPrefs] = useState<PrefsState>({ kind: 'loading' });
   const [goals, setGoals] = useState<GoalsState>({ kind: 'loading' });
   const [manual, setManual] = useState<ManualState>({ kind: 'loading' });
+  const [health, setHealth] = useState<HealthState>({ kind: 'loading' });
   const [clearError, setClearError] = useState<string | null>(null);
+  // The native HealthKit boundary, resolved once: null on builds without the
+  // module (Expo Go) — HealthKit then reports unavailable and manual entry
+  // stays the only path. Never a guess about the device.
+  const [healthNative] = useState(() => getDayliHealthKit());
+  // The explain-before-request sheet (shared by first launch and the Health
+  // page's later request) and the last request failure, surfaced explicitly.
+  const [healthAsk, setHealthAsk] = useState(false);
+  const [healthRequestError, setHealthRequestError] = useState<string | null>(null);
   // The shell's duck handle (issue #42): the swipe asks the duck to lead the
   // way to Settings, and a return home asks it to waddle back in.
   const petRef = useRef<PixelPetHandle | null>(null);
@@ -139,7 +165,8 @@ export default function App() {
       loadPreferences(AsyncStorage),
       loadGoalHistory(AsyncStorage),
       loadManualTotals(AsyncStorage),
-    ]).then(([prefsResult, goalsResult, manualResult]) => {
+      loadHealthDecisions(AsyncStorage),
+    ]).then(([prefsResult, goalsResult, manualResult, healthResult]) => {
       if (!alive) return;
       setPrefs(prefsResult.kind === 'ok'
         ? { kind: 'ready', deviceLocale, prefs: prefsResult.value, error: null }
@@ -150,6 +177,9 @@ export default function App() {
       setManual(manualResult.kind === 'ok'
         ? { kind: 'ready', totals: manualResult.value, error: null }
         : { kind: 'ready', totals: null, error: manualResult.reason });
+      setHealth(healthResult.kind === 'ok'
+        ? { kind: 'ready', decisions: healthResult.value, error: null }
+        : { kind: 'ready', decisions: null, error: healthResult.reason });
     });
     return () => { alive = false; };
   }, []);
@@ -238,10 +268,11 @@ export default function App() {
     });
   };
   // Confirmed clear-data resets exactly the local documents — preferences,
-  // goal history, manual totals, cached summaries: the keys are removed, the
-  // in-memory state returns to the defaults, so the 8,000 goal and the
-  // device-derived language come back now and on the next launch. The reset
-  // never touches Health permissions.
+  // goal history, manual totals, the Health decision record, cached
+  // summaries: the keys are removed, the in-memory state returns to the
+  // defaults, so the 8,000 goal and the device-derived language come back now
+  // and on the next launch. The reset never touches the system Health
+  // grants — Apple's permission sheet appears once per install regardless.
   const applyClearData = () => {
     void clearLocalData(AsyncStorage).then((result) => {
       if (result.kind === 'error') { setClearError(result.reason); return; }
@@ -251,6 +282,7 @@ export default function App() {
         : state);
       setGoals({ kind: 'ready', history: DEFAULT_GOAL_HISTORY, error: null });
       setManual({ kind: 'ready', totals: DEFAULT_MANUAL_TOTALS, error: null });
+      setHealth({ kind: 'ready', decisions: DEFAULT_HEALTH_DECISIONS, error: null });
     });
   };
   // The destructive action sits behind an explicit confirm button (destructive
@@ -260,6 +292,48 @@ export default function App() {
     { text: copy.cancel, style: 'cancel' },
     { text: copy.clearConfirm, style: 'destructive', onPress: applyClearData },
   ]);
+  // The typed permission state (src/healthkit.ts): availability plus the
+  // user's own recorded path — never a guess about Apple's hidden read
+  // choice. Null while the record loads AND when the record could not be
+  // read: an unknown record is no state at all, the error line says so.
+  const healthPerm: HealthPermissionState | null =
+    health.kind !== 'ready' || health.decisions === null ? null
+      : permissionState(healthNative !== null, health.decisions);
+  const healthReadFailed = health.kind === 'ready' && health.error !== null;
+  // First launch (phase-03 design 1): the explanation opens before any
+  // request, on home, only on a confirmed fresh record — a failed read never
+  // opens it. Skip or continue both record a decision, so the effect cannot
+  // re-fire afterwards; there is no auto-reprompt.
+  useEffect(() => {
+    if (nav.screen !== 'today' || healthPerm === null) return;
+    if (shouldShowFirstLaunchExplanation(healthPerm, healthReadFailed)) setHealthAsk(true);
+  }, [nav.screen, healthPerm, healthReadFailed]);
+  // The request path (phase-03 design 2): explain first, then ask. The
+  // native sheet appears only the first time — later requests complete
+  // silently — so 'granted' copy stays neutral about Apple's hidden answer.
+  // A failed request or save surfaces as an error and records nothing.
+  const requestHealthAccess = () => {
+    if (healthNative === null) return;
+    healthNative.requestStepReadAuthorization()
+      .then(() => saveHealthDecisions(AsyncStorage, { decision: 'requested' }))
+      .then((result) => {
+        if (result.kind === 'error') { setHealthRequestError(result.reason); return; }
+        setHealthRequestError(null);
+        setHealth({ kind: 'ready', decisions: result.value, error: null });
+        setHealthAsk(false);
+      })
+      .catch((cause: unknown) => {
+        setHealthRequestError(String(cause));
+      });
+  };
+  const skipHealthAccess = () => {
+    void saveHealthDecisions(AsyncStorage, { decision: 'skipped' }).then((result) => {
+      if (result.kind === 'error') { setHealthRequestError(result.reason); setHealthAsk(false); return; }
+      setHealthRequestError(null);
+      setHealth({ kind: 'ready', decisions: result.value, error: null });
+      setHealthAsk(false);
+    });
+  };
   let page: ReactElement;
 
   if (nav.screen === 'today') {
@@ -281,7 +355,10 @@ export default function App() {
         storageError={prefs.kind === 'ready' ? prefs.error : null}
         onLanguage={applyLanguage}
         currentGoal={currentGoal} canSaveGoal={goalHistory !== null}
-        goalStorageError={goalsError} onGoal={applyGoal} />
+        goalStorageError={goalsError} onGoal={applyGoal}
+        healthState={healthPerm} healthReadError={health.kind === 'ready' ? health.error : null}
+        healthRequestError={healthRequestError}
+        onHealthRequest={() => setHealthAsk(true)} />
     );
   }
 
@@ -294,6 +371,10 @@ export default function App() {
     <SafeAreaView style={s.root}>
       <StatusBar style="dark" />
       <ScreenEnter key={nav.screen} dir={enter}>{page}</ScreenEnter>
+      {/* The explain-before-request sheet (phase-03 design 1): one shared
+          modal for the first launch and any later request from Settings. */}
+      <HealthExplainModal visible={healthAsk} locale={locale} error={healthRequestError}
+        onContinue={requestHealthAccess} onSkip={skipHealthAccess} />
     </SafeAreaView>
   );
 }
@@ -742,17 +823,18 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   );
 }
 
-function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, currentGoal, canSaveGoal, goalStorageError, onGoal }: {
+function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, currentGoal, canSaveGoal, goalStorageError, onGoal, healthState, healthReadError, healthRequestError, onHealthRequest }: {
   destination: SettingsDestination; locale: Locale; onNavigate: (action: NavigationAction) => void;
   languageOverride: Locale | null; storageError: string | null;
   onLanguage: (override: Locale | null) => void;
   currentGoal: number; canSaveGoal: boolean; goalStorageError: string | null;
   onGoal: (value: number) => void;
+  healthState: HealthPermissionState | null; healthReadError: string | null;
+  healthRequestError: string | null; onHealthRequest: () => void;
 }) {
   const copy = getCopy(locale);
   const title = { goal: copy.goalTitle, language: copy.languageTitle, health: copy.healthTitle }[destination];
-  const detail = destination === 'language' ? copy.languagePersisted
-    : destination === 'health' ? copy.healthLater : null;
+  const detail = destination === 'language' ? copy.languagePersisted : null;
   return (
     <ScrollView contentContainerStyle={s.content}>
       <Header title={title} action={copy.backToSettings} label={copy.backToSettings}
@@ -762,6 +844,10 @@ function DestinationPage({ destination, locale, onNavigate, languageOverride, st
         {destination === 'goal' && (
           <GoalEditor locale={locale} currentGoal={currentGoal} canSave={canSaveGoal}
             storageError={goalStorageError} onApply={onGoal} />
+        )}
+        {destination === 'health' && (
+          <HealthPage locale={locale} state={healthState} readError={healthReadError}
+            requestError={healthRequestError} onRequest={onHealthRequest} />
         )}
         {destination === 'language' && (
           <View style={s.list}>
@@ -833,6 +919,83 @@ function GoalEditor({ locale, currentGoal, canSave, storageError, onApply }: {
       {storageError && <Text style={s.languageError}>{copy.goalStorageError}</Text>}
       {saved && <Text style={s.goalSavedNote}>{copy.goalSaved}</Text>}
     </View>
+  );
+}
+
+/**
+ * The Health access page (phase-03, issue #19): the typed permission state in
+ * the user's language, a later request behind the same explanation sheet
+ * (never an unexplained prompt), and — for the connected state — the system
+ * route Apple gives users to change their choice. Read and request failures
+ * surface as error lines, never as a success-shaped fallback. Manual entry is
+ * never gated on this page's state.
+ */
+function HealthPage({ locale, state, readError, requestError, onRequest }: {
+  locale: Locale; state: HealthPermissionState | null; readError: string | null;
+  requestError: string | null; onRequest: () => void;
+}) {
+  const copy = getCopy(locale);
+  const stateLine = state === null ? null
+    : {
+      'not-requested': copy.healthPermNotRequested,
+      'granted': copy.healthPermGranted,
+      'skipped-declined': copy.healthPermSkipped,
+      'unavailable': copy.healthPermUnavailable,
+    }[state];
+  const canRequest = state === 'not-requested' || state === 'skipped-declined';
+  return (
+    <View style={s.healthPage}>
+      {stateLine && <Text style={s.summary}>{stateLine}</Text>}
+      {canRequest && (
+        <Pressable accessibilityRole="button" accessibilityLabel={copy.healthEnableAction}
+          onPress={onRequest} style={[s.goalSave, s.healthStack]}>
+          <Text style={s.goalSaveText}>{copy.healthEnableAction}</Text>
+        </Pressable>
+      )}
+      {state === 'granted' && (
+        <Pressable accessibilityRole="button" accessibilityLabel={copy.healthOpenSystemSettings}
+          onPress={() => { void Linking.openSettings(); }}
+          style={[s.healthSecondary, s.healthStack]}>
+          <Text style={s.healthSecondaryText}>{copy.healthOpenSystemSettings}</Text>
+        </Pressable>
+      )}
+      {readError && <Text style={s.languageError}>{copy.healthDecisionsError}</Text>}
+      {requestError && <Text style={s.languageError}>{copy.healthRequestError}</Text>}
+    </View>
+  );
+}
+
+/**
+ * The explain-before-request sheet (phase-03 design 1): why step access is
+ * useful, before any system prompt. Continue asks the system; Not now records
+ * the skip. Both paths close the sheet and record exactly one decision, so
+ * neither the first launch nor a later Settings visit can nag on its own.
+ */
+function HealthExplainModal({ visible, locale, error, onContinue, onSkip }: {
+  visible: boolean; locale: Locale; error: string | null;
+  onContinue: () => void; onSkip: () => void;
+}) {
+  const copy = getCopy(locale);
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={s.overlay} accessibilityViewIsModal>
+        <View style={s.editorCard}>
+          <Text accessibilityRole="header" style={s.alertTitle}>{copy.healthExplainTitle}</Text>
+          <Text style={s.healthExplainBody}>{copy.healthExplainBody}</Text>
+          {error && <Text style={s.languageError}>{copy.healthRequestError}</Text>}
+          <View style={s.stepperActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel={copy.healthNotNow}
+              onPress={onSkip} style={s.stepperAction}>
+              <Text style={s.stepperActionText}>{copy.healthNotNow}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={copy.healthExplainContinue}
+              onPress={onContinue} style={s.stepperAction}>
+              <Text style={s.stepperActionText}>{copy.healthExplainContinue}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -997,6 +1160,22 @@ const s = StyleSheet.create({
     color: colors.accentText, fontSize: typeSize.caption, lineHeight: typeLeading.body,
     fontFamily: typeFace.text.bold, marginTop: spacing.md, textAlign: 'center',
   },
+  // The Health access page (issue #19): centered state line and actions on
+  // the card's axis, with the enable/secondary buttons filling the row width.
+  healthPage: { alignItems: 'center', alignSelf: 'stretch', gap: spacing.md },
+  healthStack: { alignSelf: 'stretch', marginTop: spacing.md },
+  healthSecondary: {
+    minHeight: 48, paddingHorizontal: spacing.xxl, alignItems: 'center',
+    justifyContent: 'center', borderRadius: radius.action, borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  healthSecondaryText: { color: colors.text, fontSize: typeSize.label,
+    fontFamily: typeFace.text.bold },
+  // The explanation sheet's body (issue #19): the prototype's .alert text —
+  // centered, regular, relaxed leading under the popup title.
+  healthExplainBody: { color: colors.text, fontSize: typeSize.body,
+    lineHeight: typeLeading.relaxed, fontFamily: typeFace.text.regular,
+    textAlign: 'center', marginTop: spacing.md },
   headerSide: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   miniDuck: {
     width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE, alignItems: 'center',

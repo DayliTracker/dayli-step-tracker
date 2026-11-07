@@ -8,6 +8,7 @@ import {
 } from '../src/manual-totals.ts';
 import { clearLocalData, LOCAL_DATA_KEYS } from '../src/clear-data.ts';
 import { PREFERENCES_KEY, loadPreferences } from '../src/preferences.ts';
+import { HEALTH_DECISIONS_KEY } from '../src/healthkit.ts';
 import { GOALS_KEY, loadGoalHistory } from '../src/goals.ts';
 import { DEFAULT_GOAL } from '../src/today.ts';
 import { localDateKey, lastSevenLocalDates } from '../src/progress.ts';
@@ -190,8 +191,11 @@ test('malformed or unrecognized stored payloads are errors, never silent resets'
   }
 });
 
-test('LOCAL_DATA_KEYS is exactly the three stored documents', () => {
-  assert.deepEqual(LOCAL_DATA_KEYS, [PREFERENCES_KEY, GOALS_KEY, MANUAL_TOTALS_KEY]);
+test('LOCAL_DATA_KEYS is exactly the four stored documents', () => {
+  // The Health decision record joins with issue #19 (phase-03): it is a local
+  // app document — clearing it never touches the system Health permissions.
+  assert.deepEqual(LOCAL_DATA_KEYS,
+    [PREFERENCES_KEY, GOALS_KEY, MANUAL_TOTALS_KEY, HEALTH_DECISIONS_KEY]);
 });
 
 test('confirmed clear-data removes exactly the local documents and nothing else', async () => {

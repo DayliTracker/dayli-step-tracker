@@ -89,7 +89,9 @@ test('interactive controls have accessible names and at least 48-point touch tar
   // popup's four controls (−, +, Cancel, Save) — issue #44
   // + the header's mini duck
   // + the goal editor's save control.
-  assert.equal(pressables.length, 11);
+  // + the Health page's two actions (enable, open iOS Settings) and the
+  // explanation sheet's two (not now, continue) — issue #19.
+  assert.equal(pressables.length, 15);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
