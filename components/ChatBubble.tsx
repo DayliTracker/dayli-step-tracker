@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet, Text, View } from 'react-native';
 import { dateIdleLine, eventLine, idleLine, type Locale } from '../src/localization';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize } from '../src/tokens';
 
@@ -49,6 +49,23 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
   const [line, setLine] = useState<string | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(6)).current;
+  // Reduce Motion (OS setting): the line still fades (opacity), but the 6pt
+  // rise holds at 0 — the bubble never moves, it only appears and dissolves.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduceMotion(on); })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (on) => setReduceMotion(on),
+    );
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -60,16 +77,20 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       opacity.stopAnimation();
       rise.stopAnimation();
       opacity.setValue(0);
-      rise.setValue(6);
+      rise.setValue(reduceMotion ? 0 : 6);
       setLine(text);
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true }),
-        Animated.timing(rise, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
+        ...(reduceMotion ? [] : [
+          Animated.timing(rise, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
+        ]),
       ]).start();
       later(HOLD_MS, () => {
         Animated.parallel([
           Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
-          Animated.timing(rise, { toValue: 6, duration: FADE_MS, useNativeDriver: true }),
+          ...(reduceMotion ? [] : [
+            Animated.timing(rise, { toValue: 6, duration: FADE_MS, useNativeDriver: true }),
+          ]),
         ]).start();
       });
     };
@@ -92,7 +113,7 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       opacity.stopAnimation();
       rise.stopAnimation();
     };
-  }, [locale, dateKey, event, opacity, rise]);
+  }, [locale, dateKey, event, opacity, rise, reduceMotion]);
 
   return (
     <View

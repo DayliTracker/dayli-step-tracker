@@ -3,6 +3,7 @@ import {
   type ForwardedRef,
 } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Image,
@@ -275,6 +276,27 @@ function PixelPetInner({
 
   // --- motion drivers ----------------------------------------------------------
 
+  // Reduce Motion (OS setting): the duck holds its static pose — the endless
+  // loops below (idle bob, sleep breathe, celebrate hop) never start, so the
+  // resting transforms stay at 0/0/1. Presentation only: the mood machine,
+  // the frame swaps, and every bounded mood (poke, walk, hop, lead, arrive,
+  // dizzy, stroll) play exactly as before.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduceMotion(on); })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (on) => setReduceMotion(on),
+    );
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const animations: Animated.CompositeAnimation[] = [];
     const play = (a: Animated.CompositeAnimation) => {
@@ -282,45 +304,52 @@ function PixelPetInner({
       a.start();
     };
     if (mood === 'idle') {
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -5,
-              duration: 1100,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 1100,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+      // Perpetual loop — under Reduce Motion the duck holds the static idle
+      // frame (the blink/glance frame swaps above still run).
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -5,
+                duration: 1100,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 1100,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     } else if (mood === 'sleep') {
       // Sleep breathes (prototype v4): a slow, deep bob at half the idle
       // pace — the held blink frame and the dim below carry the rest.
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -3,
-              duration: 1600,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 1600,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+      // Perpetual loop — gated to the static nap pose under Reduce Motion.
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -3,
+                duration: 1600,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 1600,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     } else if (mood === 'dizzy') {
       // Dizzy wobbles (prototype v4): a wide, loose tilt sweep — the star
       // layer and the look frame sell the rest.
@@ -404,48 +433,52 @@ function PixelPetInner({
       );
     } else {
       // celebrate: hop + squash-and-stretch on landing; volume preserved
-      // (scaleX up while scaleY down) so the body reads as squishy, not flat
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -18,
-              duration: 260,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 230,
-              easing: Easing.in(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.parallel([
-              Animated.timing(squash, {
-                toValue: 1.12,
-                duration: 90,
+      // (scaleX up while scaleY down) so the body reads as squishy, not flat.
+      // Perpetual loop (it holds while the goal does) — gated to the static
+      // happy frame under Reduce Motion.
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -18,
+                duration: 260,
+                easing: Easing.out(Easing.quad),
                 useNativeDriver: true,
               }),
               Animated.timing(bobY, {
-                toValue: 3,
-                duration: 90,
+                toValue: 0,
+                duration: 230,
+                easing: Easing.in(Easing.quad),
                 useNativeDriver: true,
               }),
-            ]),
-            Animated.timing(squash, {
-              toValue: 1,
-              duration: 220,
-              easing: Easing.out(Easing.elastic(2)),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 260,
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+              Animated.parallel([
+                Animated.timing(squash, {
+                  toValue: 1.12,
+                  duration: 90,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(bobY, {
+                  toValue: 3,
+                  duration: 90,
+                  useNativeDriver: true,
+                }),
+              ]),
+              Animated.timing(squash, {
+                toValue: 1,
+                duration: 220,
+                easing: Easing.out(Easing.elastic(2)),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 260,
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     }
     return () => {
       animations.forEach((a) => a.stop());
@@ -453,7 +486,7 @@ function PixelPetInner({
       tilt.setValue(0);
       squash.setValue(1);
     };
-  }, [mood, bobY, tilt, squash]);
+  }, [mood, reduceMotion, bobY, tilt, squash]);
 
   // --- poke, sleep, hop (the duck's own gestures, issue #43) --------------------
 

@@ -331,7 +331,7 @@ function Header({ title, icon, action, label, onPress, side }: {
     <View style={s.header}>
       <View style={s.headerTitle}>
         <Text style={s.eyebrow}>DAYLI STEP TRACKER</Text>
-        <Text style={s.title}>{title}</Text>
+        <Text accessibilityRole="header" style={s.title}>{title}</Text>
       </View>
       <View style={s.headerSide}>
         <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
@@ -697,7 +697,7 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
       {stepper !== null && (
         <View style={s.overlay} accessibilityViewIsModal>
           <View style={s.editorCard}>
-            <Text style={s.alertTitle}>{stepperLabel}</Text>
+            <Text accessibilityRole="header" style={s.alertTitle}>{stepperLabel}</Text>
             <View style={s.stepperRow}>
               <Pressable accessibilityRole="button"
                 accessibilityLabel={copy.stepperDecrease}
@@ -915,8 +915,11 @@ const s = StyleSheet.create({
   hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  // The prototype zeroes the slot's top margin on the textless home
+  // (.home-slot { margin-top: 0 }) — the duck anchors high on the hero's
+  // padding alone.
   petSlot: {
-    marginTop: spacing.section, alignSelf: 'center', alignItems: 'center',
+    alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
   },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
@@ -927,10 +930,13 @@ const s = StyleSheet.create({
   footprint: { transform: [{ translateY: spacing.xs }] },
   // Count + footprints mark on the textless home: one baseline row like the
   // prototype's steps-pill (row direction, gap 10, padding 8 vertical /
-  // 14 horizontal).
+  // 14 horizontal). The prototype centers the shrink-to-fit pill under the
+  // duck (.home align-items:center) — alignSelf:center shrink-wraps it onto
+  // the duck's axis instead of stretching and packing left.
   stepsPill: {
-    marginTop: spacing.lg, flexDirection: 'row', alignItems: 'baseline',
-    gap: spacing.xl, paddingVertical: spacing.lg, paddingHorizontal: spacing.gutter,
+    marginTop: spacing.lg, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'baseline', gap: spacing.xl,
+    paddingVertical: spacing.lg, paddingHorizontal: spacing.gutter,
   },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
     fontFamily: typeFace.text.regular, textAlign: 'center', marginTop: spacing.section },
@@ -946,7 +952,8 @@ const s = StyleSheet.create({
   },
   rowTitle: { color: colors.text, fontSize: typeSize.body, fontFamily: typeFace.text.bold,
     flexShrink: 1 },
-  rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold },
+  rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
+    fontVariant: typeVariant.tabularNums },
   rowValueWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   // The tappable date row (prototype v3) doubles as its own control: the
   // 60-point band is the prototype's .row height and stays past the 48-point
@@ -1035,6 +1042,6 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.xxl },
   stepperActionText: { color: colors.accentText, fontSize: typeSize.small,
     fontFamily: typeFace.text.bold },
-  divider: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border,
+  divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
     marginTop: spacing.section, marginBottom: spacing.section },
 });
