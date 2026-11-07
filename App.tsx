@@ -28,7 +28,7 @@ import {
 } from './src/goals';
 import { clearLocalData } from './src/clear-data';
 import {
-  loadManualTotals, saveManualTotals, setManualTotal,
+  loadManualTotals, saveManualTotals, setManualTotal, removeManualTotal,
   manualTotalForDate, MAX_MANUAL_TOTAL, DEFAULT_MANUAL_TOTALS, type ManualTotals,
 } from './src/manual-totals';
 import {
@@ -272,6 +272,22 @@ export default function App() {
       });
     });
   };
+  // Removing a manual total goes through the same loaded-record base and the
+  // same confirmed-write contract as saving: the store confirms, the rows
+  // re-render from what is stored, and the date's manual precedence ends —
+  // the Health total or the truthful no-data state replaces it. A failed
+  // write keeps the previous record and surfaces the reason.
+  const applyManualRemoval = (dateKey: string) => {
+    if (manual.kind !== 'ready' || manual.totals === null) return;
+    void saveManualTotals(AsyncStorage, removeManualTotal(manual.totals, dateKey))
+      .then((result) => {
+        setManual((state) => {
+          if (state.kind !== 'ready') return state;
+          if (result.kind === 'error') return { ...state, error: result.reason };
+          return { kind: 'ready', totals: result.value, error: null };
+        });
+      });
+  };
   // Confirmed clear-data resets exactly the local documents — preferences,
   // goal history, manual totals, the Health decision record, cached
   // summaries: the keys are removed, the in-memory state returns to the
@@ -399,6 +415,7 @@ export default function App() {
     page = <SettingsPage locale={locale} onNavigate={send} onClear={confirmClear}
       clearError={clearError} goalSubtitle={goalSubtitle}
       goalHistory={goalHistory} manual={manual} onApply={applyManualTotal}
+      onRemove={applyManualRemoval}
       healthTotals={healthTotals} healthPerm={healthPerm} />;
   } else {
     page = (
@@ -747,13 +764,15 @@ function Progress({ locale, goalHistory, manual, health, healthPerm, onOpenStepp
  * beside the back action in the header, and Progress' seven tappable date
  * rows. The stepper popup (prototype v3) is in-screen state — it writes the
  * manual-totals owner on Save (the row and home, for today, re-render from
- * the same store), never navigates, and Cancel throws the draft away.
+ * the same store), removes the date's manual total through the same owner
+ * when it holds one, never navigates, and Cancel throws the draft away.
  */
-function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply, healthTotals, healthPerm }: {
+function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply, onRemove, healthTotals, healthPerm }: {
   locale: Locale; onNavigate: (action: NavigationAction) => void;
   onClear: () => void; clearError: string | null; goalSubtitle: string;
   goalHistory: GoalHistory | null; manual: ManualState;
   onApply: (dateKey: string, value: number) => void;
+  onRemove: (dateKey: string) => void;
   healthTotals: HealthTotalsView; healthPerm: HealthPermissionState | null;
 }) {
   const copy = getCopy(locale);
@@ -762,14 +781,18 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   // The mini duck (prototype v5) sits beside the back action; poking it
   // plays the surprised + heart and follows it home — the arrival waddle is
   // the back navigation's own (#42's arrive()).
-  const [stepper, setStepper] = useState<{ dateKey: string; value: number } | null>(null);
+  const [stepper, setStepper] = useState<{
+    dateKey: string; value: number; hasManual: boolean;
+  } | null>(null);
   const openStepper = (dateKey: string) => {
     // The draft starts from the date's saved total, or 0 for a date with no
-    // data — never from a fabricated number.
+    // data — never from a fabricated number. Whether the date holds a manual
+    // total is captured here too: Remove exists only where there is something
+    // to remove.
     const existing = manual.kind === 'ready' && manual.totals !== null
       ? manualTotalForDate(manual.totals, dateKey)
       : null;
-    setStepper({ dateKey, value: existing ?? 0 });
+    setStepper({ dateKey, value: existing ?? 0, hasManual: existing !== null });
   };
   // −/+ at 100 per tap (prototype v3) inside the data owner's documented
   // bounds — 0 floor, and the store's 100,000 ceiling, so a saved value is
@@ -783,6 +806,14 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   const saveStepper = () => {
     if (stepper === null) return;
     onApply(stepper.dateKey, stepper.value);
+    setStepper(null);
+  };
+  // Remove ends the date's manual precedence through the store owner — the
+  // same confirmed-write contract as Save: until the record confirms, the
+  // rows keep the previous totals, and a failed write surfaces the reason.
+  const removeStepper = () => {
+    if (stepper === null) return;
+    onRemove(stepper.dateKey);
     setStepper(null);
   };
   // The popup's date label matches the row that opened it.
@@ -868,12 +899,20 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
               </Pressable>
             </View>
             {/* Prototype .alert-actions: borderless text buttons spread with
-                space-around — the accentText green IS Save's confirm weight. */}
+                space-around — the accentText green IS Save's confirm weight,
+                and Remove takes the destructive color: it ends the date's
+                manual precedence and only exists when a manual total does. */}
             <View style={s.stepperActions}>
               <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
                 onPress={() => setStepper(null)} style={s.stepperAction}>
                 <Text style={s.stepperActionText}>{copy.cancel}</Text>
               </Pressable>
+              {stepper.hasManual && (
+                <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
+                  onPress={removeStepper} style={s.stepperAction}>
+                  <Text style={s.stepperRemoveText}>{copy.manualRemove}</Text>
+                </Pressable>
+              )}
               <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
                 onPress={saveStepper} style={s.stepperAction}>
                 <Text style={s.stepperActionText}>{copy.manualSave}</Text>
@@ -1300,6 +1339,8 @@ const s = StyleSheet.create({
   stepperAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xxl },
   stepperActionText: { color: colors.accentText, fontSize: typeSize.small,
+    fontFamily: typeFace.text.bold },
+  stepperRemoveText: { color: colors.danger, fontSize: typeSize.small,
     fontFamily: typeFace.text.bold },
   divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
     marginTop: spacing.section, marginBottom: spacing.section },

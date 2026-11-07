@@ -112,6 +112,7 @@ test('stepper copy exists in both locales and no preview or removed-editor langu
   for (const locale of ['en', 'vi']) {
     const copy = getCopy(locale);
     assert.ok(copy.manualSave.trim());
+    assert.ok(copy.manualRemove.trim());
     assert.ok(copy.manualInputLabel.trim());
     assert.ok(copy.manualStorageError.trim());
     assert.ok(copy.stepperDecrease.trim());
@@ -119,9 +120,12 @@ test('stepper copy exists in both locales and no preview or removed-editor langu
     assert.ok(copy.miniDuckPoke.trim());
   }
   assert.notEqual(getCopy('en').manualSave, getCopy('vi').manualSave);
+  assert.notEqual(getCopy('en').manualRemove, getCopy('vi').manualRemove);
   assert.notEqual(getCopy('en').stepperDecrease, getCopy('vi').stepperDecrease);
-  // The manual editor page is gone: its page copy went with it.
-  for (const key of ['manualTitle', 'manualReplaces', 'manualRemove', 'manualSaved',
+  // The manual editor page is gone: its page copy went with it. manualRemove
+  // is not on that list any more — the stepper popup offers the removal again
+  // (phase 3's AC4), so the key is required copy above.
+  for (const key of ['manualTitle', 'manualReplaces', 'manualSaved',
     'manualRemoved', 'manualInvalid', 'addManualTotal', 'editManualTotal']) {
     assert.equal(getCopy('en')[key], undefined, `${key} left with the manual editor`);
     assert.equal(getCopy('vi')[key], undefined, `${key} left with the manual editor`);
