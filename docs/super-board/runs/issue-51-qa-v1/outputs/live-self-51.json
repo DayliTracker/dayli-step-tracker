@@ -1,0 +1,17 @@
+{
+  "51": {
+    "number": 51,
+    "title": "🔧 [chore] board: preflight file-overlap regex misses bare filenames",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [
+      60
+    ],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "open PRs touch the same files — build after them",
+    "evidence": [
+      "open PR #60 touches App.tsx"
+    ]
+  }
+}

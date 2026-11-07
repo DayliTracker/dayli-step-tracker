@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# stub gh — serves canned GitHub JSON for the #51 preflight QA harness.
+# Only effective when SB_STUB_FIXTURES is set by run-scenarios.sh; inert otherwise.
+set -uo pipefail
+FIX="${SB_STUB_FIXTURES:?SB_STUB_FIXTURES not set}"
+DIR=$(cd "$(dirname "$FIX")" && pwd)
+die() { echo "stub-gh: unexpected call: $*" >&2; exit 1; }
+load() { if [ -f "$1" ]; then cat "$1"; else die "missing fixture $1"; fi }
+quota() {
+  if [ -f "$FIX/quota.json" ]; then cat "$FIX/quota.json"; else cat "$DIR/shared-quota.json"; fi
+}
+state=""; prev=""
+for a in "$@"; do
+  if [ "$prev" = "--state" ]; then state="$a"; fi
+  prev="$a"
+done
+cmd="$1"; shift
+case "$cmd" in
+  api)
+    case "$1" in
+      rate_limit) quota ;;
+      graphql)    load "$DIR/shared-graphql.json" ;;
+      *) die "$cmd $*" ;;
+    esac ;;
+  pr)
+    if [ "$1" = "list" ]; then
+      case "$state" in
+        merged) load "$FIX/merged.json" ;;
+        open)   load "$FIX/open.json" ;;
+        *) die "pr list state=$state" ;;
+      esac
+    else die "$cmd $*"; fi ;;
+  issue)
+    if [ "$1" = "list" ]; then
+      load "$FIX/closed.json"
+    elif [ "$1" = "view" ]; then
+      load "$FIX/issues/$2.json"
+    else die "$cmd $*"; fi ;;
+  *) die "$cmd $*" ;;
+esac

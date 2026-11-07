@@ -1,0 +1,8 @@
+rework the root-level `App.tsx` mood ring
+touch `src/api/stream.ts` guard
+harden `.claude/bin/super-board-preflight.sh` quoting
+upgrade expo sdk 50.0.0 today
+see e.g. the docs for details
+reach the gateway at 127.0.0.1 now
+bump to v2.0 soon
+list ends None.

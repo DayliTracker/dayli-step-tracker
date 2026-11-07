@@ -1,0 +1,28 @@
+{
+  "63": {
+    "number": 63,
+    "title": "✨ [feat] api: stream queue",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "proceed",
+    "tag": "clean",
+    "reason": "no duplicate, no overlap",
+    "evidence": []
+  },
+  "64": {
+    "number": 64,
+    "title": "✨ [feat] web: retry banner",
+    "candidates": [],
+    "blockedBy": [
+      63
+    ],
+    "conflictWith": [],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "a lower-numbered card in this check touches the same files — build after it",
+    "evidence": [
+      "#63 touches src/api/stream.ts"
+    ]
+  }
+}

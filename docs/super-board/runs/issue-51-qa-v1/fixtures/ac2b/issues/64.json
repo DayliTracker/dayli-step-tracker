@@ -1,0 +1,1 @@
+{"number":64,"title":"✨ [feat] web: retry banner","body":"## Problem\nThe web banner hides retry errors.\n\n## Fix\nSurface retries from `src/api/stream.ts` in the banner.\n\n## Acceptance Criteria\n- [ ] banner shows the retry state\n\n## Risk\n🟢 **Low** · one file\n\n## Blocked by\n- None.\n"}

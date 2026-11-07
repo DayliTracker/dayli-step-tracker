@@ -1,0 +1,13 @@
+{
+  "60": {
+    "number": 60,
+    "title": "✨ [feat] home: duck mood ring",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "proceed",
+    "tag": "clean",
+    "reason": "no duplicate, no overlap",
+    "evidence": []
+  }
+}

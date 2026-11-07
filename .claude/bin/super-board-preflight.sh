@@ -93,7 +93,8 @@ jq -n --argjson targets "$TARGETS" --argjson merged "$MERGED" --argjson open "$O
   def closes($n): (.body // "") | test("(?i)\\b(close[sd]?|fix(e[sd])?|resolve[sd]?)[ :]+#" + ($n | tostring) + "\\b");
   def closed_refs: [ (.body // "") | scan("(?i)\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)[ :]+#([0-9]+)")[0] | tonumber ] | unique;
   def fps: [ (.body // "") | scan("(?m)^[ \t]*fingerprint:[ \t]*([^\n]*[^ \t\n])")[0] ];
-  def paths: [ (.body // "") | scan("[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+\\.[A-Za-z0-9]+") ] | unique;
+  # Bare filenames count too (#51): the `/` is optional, so `App.tsx` matches like `src/App.tsx`.
+  def paths: [ (.body // "") | scan("[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\\.[A-Za-z0-9]+") ] | unique;
   # The AC section: lines after the LAST "## Acceptance Criteria" heading, up to the next "## ".
   def has_acs: ((.body // "") / "\n") as $l
     | [ $l | to_entries[] | select(.value | test("^##[ \t]+Acceptance Criteria")) | .key ] as $h

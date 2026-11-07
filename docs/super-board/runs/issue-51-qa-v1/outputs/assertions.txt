@@ -1,0 +1,19 @@
+PASS  AC1 fixed: #60 (lower) proceeds
+PASS  AC1 fixed: #61 sequences
+PASS  AC1 fixed: #61 blockedBy #60
+PASS  AC1 fixed: #61 evidence names App.tsx from BOTH bodies
+PASS  AC1 fixed: output keys exactly 60,61
+PASS  AC1 baseline: #61 does NOT sequence (bug reproduced)
+PASS  AC1b fixed: bare filename alone does not hold #60
+PASS  AC2a fixed: #62 sequences on open-PR overlap
+PASS  AC2a fixed: evidence names src/api/stream.ts
+PASS  AC2a fixed: conflictWith PR 70, blockedBy empty
+PASS  AC2a baseline: pre-fix behavior identical (sequence)
+PASS  AC2a-files: --files mode still sequences
+PASS  AC2b fixed: #63 (lower) proceeds
+PASS  AC2b fixed: #64 sequences behind #63
+PASS  AC2b baseline: pre-fix behavior identical
+PASS  AC2c fixed: dot-prefixed path overlap keeps the leading dot
+PASS  AC3 noise: shared prose e.g. spuriously sequences #67 (documented trade-off)
+PASS  CLI: no args exits 64
+PASS  CLI: --issues abc exits 64

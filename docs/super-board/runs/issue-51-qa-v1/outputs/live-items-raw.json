@@ -1,0 +1,601 @@
+{
+  "items": [
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEXSvo",
+      "title": "🎨 [feature] phase-1: approve UX flows and visual system",
+      "content": {
+        "type": "Issue",
+        "title": "🎨 [feature] phase-1: approve UX flows and visual system",
+        "number": 2,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/2",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "loop:rebuild-2",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEXS5Q",
+      "title": "🧪 [qa] phase-1: verify accessibility and device layouts",
+      "content": {
+        "type": "Issue",
+        "title": "🧪 [qa] phase-1: verify accessibility and device layouts",
+        "number": 6,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/6",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "qa",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEXS0U",
+      "title": "🧭 [feature] app shell: navigate Today, Progress, and Settings",
+      "content": {
+        "type": "Issue",
+        "title": "🧭 [feature] app shell: navigate Today, Progress, and Settings",
+        "number": 3,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/3",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "loop:rebuild-1",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEXS2Y",
+      "title": "📱 [feature] today: show goal progress and original character",
+      "content": {
+        "type": "Issue",
+        "title": "📱 [feature] today: show goal progress and original character",
+        "number": 4,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/4",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Review",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEXSus",
+      "title": "📈 [feature] progress: show the latest seven local dates",
+      "content": {
+        "type": "Issue",
+        "title": "📈 [feature] progress: show the latest seven local dates",
+        "number": 5,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/5",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "loop:rebuild-1"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEutTI",
+      "title": "🐛 Bug /today — VoiceOver reads a doubled period in the Today ring summary label",
+      "content": {
+        "type": "Issue",
+        "title": "🐛 Bug /today — VoiceOver reads a doubled period in the Today ring summary label",
+        "number": 11,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/11",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "accessibility",
+        "bug",
+        "source:qa"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzF4Q",
+      "title": "✨ [feature] ui: central design token module",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] ui: central design token module",
+        "number": 12,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/12",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzF8M",
+      "title": "✨ [feature] ui: load Nunito and Lexend per visual system",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] ui: load Nunito and Lexend per visual system",
+        "number": 13,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/13",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzF_8",
+      "title": "✨ [feature] mascot: bring the animated PixelPet into the shell",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascot: bring the animated PixelPet into the shell",
+        "number": 14,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/14",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "loop:rebuild-1",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGWk",
+      "title": "✨ [feature] phase-2: local persistence, locale, language override",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-2: local persistence, locale, language override",
+        "number": 16,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/16",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhE7KNc",
+      "title": "✨ [feature] ui: standard icons and de-texted screens",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] ui: standard icons and de-texted screens",
+        "number": 28,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/28",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGD0",
+      "title": "📝 [docs] adr: record the no-UI-framework library decision",
+      "content": {
+        "type": "Issue",
+        "title": "📝 [docs] adr: record the no-UI-framework library decision",
+        "number": 15,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/15",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "documentation",
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGh4",
+      "title": "✨ [feature] phase-2: manual totals, real clear-data, today wiring",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-2: manual totals, real clear-data, today wiring",
+        "number": 18,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/18",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGcE",
+      "title": "✨ [feature] phase-2: goal editing with per-date goal history",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-2: goal editing with per-date goal history",
+        "number": 17,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/17",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGng",
+      "title": "✨ [feature] phase-3: HealthKit config, entitlements, permissions",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-3: HealthKit config, entitlements, permissions",
+        "number": 19,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/19",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGrw",
+      "title": "✨ [feature] phase-3: step reads, refresh, truthful states",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-3: step reads, refresh, truthful states",
+        "number": 20,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/20",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "QA",
+      "labels": [
+        "feature",
+        "loop:rebuild-1"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhE0cz0",
+      "title": "🐛 Bug /shell — header action button renders 43.3pt wide, under the 44pt touch-target minimum",
+      "content": {
+        "type": "Issue",
+        "title": "🐛 Bug /shell — header action button renders 43.3pt wide, under the 44pt touch-target minimum",
+        "number": 24,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/24",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhEzGw8",
+      "title": "✨ [feature] phase-4: verification matrix and readiness docs",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] phase-4: verification matrix and readiness docs",
+        "number": 21,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/21",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhE7ADE",
+      "title": "♻️ [refactor] a11y-labels: ♻️ refactor: one shared a11y sentence-normalizer — today.ts and progress.ts define divergent copies",
+      "content": {
+        "type": "Issue",
+        "title": "♻️ [refactor] a11y-labels: ♻️ refactor: one shared a11y sentence-normalizer — today.ts and progress.ts define divergent copies",
+        "number": 27,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/27",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "needs-you",
+        "refactor",
+        "source:review",
+        "strength:worth-exploring"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhE7KPQ",
+      "title": "✨ [feature] mascot: daily speech bubble and messages",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascot: daily speech bubble and messages",
+        "number": 29,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/29",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhE7KQ0",
+      "title": "✨ [feature] mascot: swap to the 48px sprite pack",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascot: swap to the 48px sprite pack",
+        "number": 30,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/30",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGUQkw",
+      "title": "✨ [feature] nav: tabs out, swipe-left with duck-led transition",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] nav: tabs out, swipe-left with duck-led transition",
+        "number": 42,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/42",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGUQpQ",
+      "title": "✨ [feature] mascot: sleep, dizzy, stroll, hop moods",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascot: sleep, dizzy, stroll, hop moods",
+        "number": 43,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/43",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGUQtM",
+      "title": "✨ [feature] settings: stepper popup, mini duck, ring out",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] settings: stepper popup, mini duck, ring out",
+        "number": 44,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/44",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGUQyM",
+      "title": "✨ [feature] mascot: smooth-art duck frames from prototype",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascot: smooth-art duck frames from prototype",
+        "number": 45,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/45",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "needs-you"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGwgzU",
+      "title": "🔧 [chore] mascots: shelve 48px class, adopt smooth-art ADR",
+      "content": {
+        "type": "Issue",
+        "title": "🔧 [chore] mascots: shelve 48px class, adopt smooth-art ADR",
+        "number": 5,
+        "url": "https://github.com/DayliTracker/mascots/issues/5",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGwg1M",
+      "title": "✨ [feature] mascots: smooth-pack engine, SVG to PNG frames",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascots: smooth-pack engine, SVG to PNG frames",
+        "number": 4,
+        "url": "https://github.com/DayliTracker/mascots/issues/4",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Done",
+      "labels": [
+        "feature",
+        "loop:rebuild-1"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGwg3M",
+      "title": "✨ [feature] mascots: smooth duck Gate 1 polish to cute verdict",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] mascots: smooth duck Gate 1 polish to cute verdict",
+        "number": 3,
+        "url": "https://github.com/DayliTracker/mascots/issues/3",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGwg5U",
+      "title": "✨ [feature] dayli: ship smooth duck behind the switcher",
+      "content": {
+        "type": "Issue",
+        "title": "✨ [feature] dayli: ship smooth duck behind the switcher",
+        "number": 2,
+        "url": "https://github.com/DayliTracker/mascots/issues/2",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Ready",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGwg6U",
+      "title": "📝 [docs] mascots: /mascot skill goes dual-mode",
+      "content": {
+        "type": "Issue",
+        "title": "📝 [docs] mascots: /mascot skill goes dual-mode",
+        "number": 1,
+        "url": "https://github.com/DayliTracker/mascots/issues/1",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Done",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGxoBU",
+      "title": "🐛 [bug] nav: screen slide ignores Reduce Motion",
+      "content": {
+        "type": "Issue",
+        "title": "🐛 [bug] nav: screen slide ignores Reduce Motion",
+        "number": 55,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/55",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGxoD8",
+      "title": "🔧 [chore] home: footprints nudge overshoots the prototype baseline",
+      "content": {
+        "type": "Issue",
+        "title": "🔧 [chore] home: footprints nudge overshoots the prototype baseline",
+        "number": 56,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/56",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGxoFs",
+      "title": "🔧 [chore] settings: stepper scrim stops at the safe-area top",
+      "content": {
+        "type": "Issue",
+        "title": "🔧 [chore] settings: stepper scrim stops at the safe-area top",
+        "number": 57,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/57",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGxoG8",
+      "title": "♻️ [refactor] today: pass currentGoal instead of recomputing it",
+      "content": {
+        "type": "Issue",
+        "title": "♻️ [refactor] today: pass currentGoal instead of recomputing it",
+        "number": 58,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/58",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "feature"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhGxyr4",
+      "title": "🧪 [test] mascots: bare validate-frames fails on fresh checkouts",
+      "content": {
+        "type": "Issue",
+        "title": "🧪 [test] mascots: bare validate-frames fails on fresh checkouts",
+        "number": 7,
+        "url": "https://github.com/DayliTracker/mascots/issues/7",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Done",
+      "labels": [
+        "bug",
+        "source:qa"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhG1zso",
+      "title": "🐛 [bug] skills/mascot: mascot: pixel engine CLI entry silently no-ops when invoked via a symlinked path",
+      "content": {
+        "type": "Issue",
+        "title": "🐛 [bug] skills/mascot: mascot: pixel engine CLI entry silently no-ops when invoked via a symlinked path",
+        "number": 14,
+        "url": "https://github.com/DayliTracker/mascots/issues/14",
+        "repository": "DayliTracker/mascots"
+      },
+      "status": "Ready",
+      "labels": [
+        "bug",
+        "source:qa",
+        "priority:medium",
+        "area:skills/mascot",
+        "qa:functional",
+        "skill:super-build"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhG2I28",
+      "title": "🔧 [chore] board: preflight file-overlap regex misses bare filenames",
+      "content": {
+        "type": "Issue",
+        "title": "🔧 [chore] board: preflight file-overlap regex misses bare filenames",
+        "number": 51,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/51",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "QA",
+      "labels": [
+        "bug"
+      ]
+    },
+    {
+      "id": "PVTI_lADOFNOonM4BpNtczhG2I6c",
+      "title": "🐛 [fix] mascot: stroll long-hold misses holds below the step pill",
+      "content": {
+        "type": "Issue",
+        "title": "🐛 [fix] mascot: stroll long-hold misses holds below the step pill",
+        "number": 52,
+        "url": "https://github.com/DayliTracker/dayli-step-tracker/issues/52",
+        "repository": "DayliTracker/dayli-step-tracker"
+      },
+      "status": "Blocked",
+      "labels": [
+        "bug"
+      ]
+    }
+  ],
+  "totalCount": 38
+}
