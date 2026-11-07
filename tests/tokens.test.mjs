@@ -22,7 +22,10 @@ test('tokens pin the approved radius, spacing, and type scales exactly', () => {
   // (prototype .editor border-radius).
   assert.deepEqual(radius, { control: 14, tab: 15, action: 16, row: 17, popup: 18, card: 24 });
   assert.deepEqual(spacing, {
-    hairline: 1, xs: 3, sm: 4, md: 5, lg: 8, xl: 10, xxl: 12,
+    hairline: 1, xs: 3, sm: 4, md: 5,
+    // The talk box's 7px optical step joins the scale from the prototype
+    // (.bubble padding: 7px 12px) so the component consumes a token.
+    optical7: 7, lg: 8, xl: 10, xxl: 12,
     gutter: 14, section: 18, page: 20, screen: 28,
   });
   // The popup roles join the type scale from prototype v6: .alert-title 17,

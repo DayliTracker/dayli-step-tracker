@@ -15,9 +15,6 @@ const CHATTER_VARIANCE_MS = 7000;
 /** Component sizing stays beside the component that owns it (src/tokens.ts). */
 const BUBBLE_MAX_WIDTH = 230;
 const TAIL_SIZE = 12;
-/** The bubble's vertical padding: the prototype's 7px optical step (the
- *  spacing scale has no 7 — component-owned sizing stays beside its owner). */
-const BUBBLE_PAD_Y = 7;
 
 /** Mascot events the bubble speaks; `dizzy`/`stroll` wait for #43, `lead`/`homecome` for #42. */
 export type BubbleEventCategory =
@@ -31,6 +28,12 @@ type ChatBubbleProps = {
   dateKey: string;
   /** Newest event to speak; a bumped nonce replays even a repeated category. */
   event: BubbleEvent | null;
+  /** Distance from the pet slot's bottom edge to the talk box's bottom edge,
+      computed by the slot owner (App.tsx) from the slot geometry it owns —
+      the prototype's .bubble { bottom: 322px } against the 320px slot: the
+      box rides 2px above the slot's top and its tail hangs down into the
+      headroom. */
+  dockBottom: number;
 };
 
 /**
@@ -45,7 +48,7 @@ type ChatBubbleProps = {
  * accessibility order — the Today group's label stays the screen-reader
  * source, and the duck's tap target keeps its own label.
  */
-export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) {
+export default function ChatBubble({ locale, dateKey, event, dockBottom }: ChatBubbleProps) {
   const [line, setLine] = useState<string | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(6)).current;
@@ -121,7 +124,7 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={s.dock}
+      style={[s.dock, { bottom: dockBottom }]}
     >
       {line !== null && (
         <Animated.View style={[s.bubble, { opacity, transform: [{ translateY: rise }] }]}>
@@ -134,9 +137,12 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
 }
 
 const s = StyleSheet.create({
-  // The dock sits in the pet slot's reserved headroom above the duck, so the
-  // bubble grows upward into empty space and the step pill below never moves.
-  dock: { alignItems: 'center', marginBottom: spacing.lg },
+  // The dock pins the talk box to the pet slot's headroom top — the slot
+  // owner passes the offset (prototype .bubble { position: absolute;
+  // bottom: 322px }): the box grows upward into the hero's padding while its
+  // tail hangs down through the headroom, and the step pill below never
+  // moves.
+  dock: { position: 'absolute', alignSelf: 'center', alignItems: 'center' },
   // The prototype's talk box: card surface, 2px border, 14pt corners, 230pt
   // cap, 7/12 padding, centered 13pt Lexend semibold.
   bubble: {
@@ -146,7 +152,7 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     paddingHorizontal: spacing.xxl,
-    paddingVertical: BUBBLE_PAD_Y,
+    paddingVertical: spacing.optical7,
     alignItems: 'center',
   },
   line: {

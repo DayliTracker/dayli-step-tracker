@@ -39,8 +39,8 @@ import {
 } from './src/today';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import PixelPet, {
-  LEAD_MS, type PixelPetEvent, type PixelPetFrames, type PixelPetHandle,
-  type PixelPetParticles,
+  HeartBurst, LEAD_MS, type PixelPetEvent, type PixelPetFrames,
+  type PixelPetHandle, type PixelPetParticles,
 } from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
@@ -53,6 +53,10 @@ import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant }
 // mascot state draws over the text above it.
 const PET_SIZE = 200;
 const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
+// The talk box docks 2pt above the slot's top edge (prototype .bubble
+// bottom: 322px against the 320px slot) so its tail hangs down through the
+// headroom the way the prototype's does.
+const PET_SLOT_BUBBLE_LIFT = 2;
 // The footprints mark beside the step count mirrors the prototype's 24px
 // 👣 (prototype/textless-shell v6 .steps-icon).
 const FOOTPRINT_SIZE = 24;
@@ -510,7 +514,8 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
         importantForAccessibility="no-hide-descendants"
         style={s.petSlot}
       >
-        <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent} />
+        <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent}
+          dockBottom={PET_SIZE + PET_SLOT_HEADROOM + PET_SLOT_BUBBLE_LIFT} />
         <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
           size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} onDuckTouch={onDuckTouch} />
       </View>
@@ -845,19 +850,16 @@ function MiniDuck({ frames, particles, label, onHome }: {
   label: string; onHome: () => void;
 }) {
   const [poked, setPoked] = useState(false);
+  // The poke plays the same rising heart as the home duck (PixelPet's
+  // HeartBurst), at the mini duck's size — each poke remounts the burst
+  // (key), which restarts the shared driver.
+  const [burst, setBurst] = useState(0);
   const busy = useRef(false);
-  // The rising heart rides its own driver, started on the poke like the
-  // home duck's (PixelPet's playHeart) — the small version of the same burst.
-  const miniHeart = useRef(new Animated.Value(0)).current;
   const poke = () => {
     if (busy.current) return;
     busy.current = true;
     setPoked(true);
-    miniHeart.setValue(0);
-    Animated.timing(miniHeart, {
-      toValue: 1, duration: 750, easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
+    setBurst((k) => k + 1);
     setTimeout(() => {
       setPoked(false);
       onHome();
@@ -867,16 +869,12 @@ function MiniDuck({ frames, particles, label, onHome }: {
     <Pressable accessibilityRole="button" accessibilityLabel={label}
       onPress={poke} style={s.miniDuck}>
       {poked && (
-        <Animated.Image
+        <HeartBurst
+          key={burst}
           source={particles.heart}
-          style={[s.miniHeart, {
-            opacity: miniHeart.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] }),
-            transform: [{
-              translateY: miniHeart.interpolate({
-                inputRange: [0, 1], outputRange: [0, -MINI_DUCK_SIZE * 0.7],
-              }),
-            }],
-          }]}
+          size={MINI_DUCK_SIZE * 0.4}
+          riseFrom={0}
+          riseTo={-MINI_DUCK_SIZE * 0.7}
         />
       )}
       <Image
@@ -917,9 +915,10 @@ const s = StyleSheet.create({
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   // The prototype zeroes the slot's top margin on the textless home
   // (.home-slot { margin-top: 0 }) — the duck anchors high on the hero's
-  // padding alone.
+  // padding alone. The slot is the talk box's containing block
+  // (.pet-slot { position: relative }): its dock pins to the headroom top.
   petSlot: {
-    alignSelf: 'center', alignItems: 'center',
+    position: 'relative', alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
   },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
@@ -1004,8 +1003,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   miniDuckImage: { width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE },
-  miniHeart: { position: 'absolute', width: MINI_DUCK_SIZE * 0.4,
-    height: MINI_DUCK_SIZE * 0.4 * (6 / 7), top: 0 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: colors.overlayDim, alignItems: 'center', justifyContent: 'center' },
   // The stepper popup card (prototype .editor): 300pt wide, 18pt corners,

@@ -47,13 +47,15 @@ export const radius = {
 
 /**
  * Spacing scale (pt). The approved screens use these steps only; the small
- * odd values (3, 4, 5) are optical corrections from the phase-1 visual pass.
+ * odd values (3, 4, 5, 7) are optical corrections from the phase-1 visual
+ * pass and the prototype.
  */
 export const spacing = {
   hairline: 1, // divider thickness
   xs: 3, // micro optical alignment (title, subtitle nudges)
   sm: 4, // goal block vertical rhythm
   md: 5, // muted-line gap under values
+  optical7: 7, // the talk box's vertical padding (prototype .bubble 7px 12px)
   lg: 8, // inline gaps and chip padding
   xl: 10, // card and list gaps
   xxl: 12, // section padding, date margin
