@@ -11,7 +11,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.anonymous.dayli-step-tracker"
+      "bundleIdentifier": "com.daylitracker.dayli",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Dayli reads your daily step count from Apple Health to show your progress. Read-only — Dayli never writes health data."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

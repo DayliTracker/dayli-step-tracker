@@ -1,0 +1,7 @@
+{
+  "name": "dayli-health-kit",
+  "version": "0.0.0",
+  "description": "Dayli's read-only HealthKit boundary (local Expo module, iOS only).",
+  "main": "index.ts",
+  "private": true
+}
