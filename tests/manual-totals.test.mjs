@@ -252,10 +252,11 @@ test('the shell wires manual totals, Today, and the real clear-data flow', () =>
   assert.match(appSource, /loadManualTotals\(AsyncStorage\)/);
   assert.match(appSource, /totals: null, error: manualResult\.reason/);
   // Today derives its snapshot from the local data owner — the hardcoded
-  // unavailable snapshot is gone.
+  // unavailable snapshot is gone, and the derivation runs through the single
+  // truthful-state rule (manual precedence first, then Health; issue #20).
   assert.doesNotMatch(appSource, /useState<TodaySnapshot>\(\{ kind: 'unavailable' \}\)/);
   assert.match(appSource, /manualTotalForDate\(manual\.totals, todayKey\)/);
-  assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/);
+  assert.match(appSource, /resolveDaySnapshot\(/);
   // Manual saves refuse without a loaded base, and the stepper's clamp keeps
   // every draft inside the bounds the store accepts (issue #44).
   assert.match(appSource, /if \(manual\.kind !== 'ready' \|\| manual\.totals === null\) return;/);

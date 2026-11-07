@@ -140,10 +140,13 @@ test('Progress wires the seven local dates, the stepper affordance, and truthful
     /progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)/,
     'each row announces its own snapshot and per-date goal, not a constant',
   );
-  assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/,
-    'a row with a manual total renders it as the Manual source');
-  assert.match(appSource, /\{ kind: 'unavailable' \}/,
-    'a row with no data passes the truthful unavailable snapshot');
+  // Issue #20: each row derives its snapshot through the single
+  // truthful-state rule — manual precedence first, then Health, then the
+  // explicit refreshing/failed/no-data states (src/healthkit.ts).
+  assert.match(appSource, /resolveDaySnapshot\(/,
+    'a row renders through the single truthful-state rule');
+  assert.doesNotMatch(appSource, /\{ kind: 'unavailable' \}/,
+    'no ad-hoc snapshot literal bypasses the resolver');
   assert.match(appSource, /\? formatNumber\(total, locale\) : '—'/,
     'an absent total renders the em-dash slot, not a number');
   assert.doesNotMatch(appSource, /manualPreview/, 'the preview alert is gone');

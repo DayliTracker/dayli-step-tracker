@@ -1,4 +1,5 @@
 import type { StorageBackend, StorageResult } from './preferences.ts';
+import type { TodaySnapshot } from './today.ts';
 
 /**
  * HealthKit permission foundation (phase-03 spec, issue #19): the typed
@@ -124,4 +125,169 @@ export function shouldShowFirstLaunchExplanation(
   state: HealthPermissionState, decisionsReadFailed: boolean,
 ): boolean {
   return state === 'not-requested' && !decisionsReadFailed;
+}
+
+/**
+ * Step reads (phase-03, issue #20) — the read side of the same typed
+ * boundary. Fetched Health totals live in React state only: they are never
+ * written to storage (AC: a restart must find none), and every refresh is
+ * user- or foreground-driven — app open, return to foreground, pull to
+ * refresh. Nothing here schedules or implies a background refresh.
+ */
+
+/** One day interval's step total from the native query (see the module). */
+export interface DayStepSample {
+  startMs: number;
+  steps: number;
+}
+
+/** The read surface the app needs; the native module satisfies it structurally. */
+export interface HealthKitStepReader {
+  readDailyStepTotals(fromMs: number, toMs: number): Promise<DayStepSample[]>;
+}
+
+/** The read window: today and the previous six device-local dates. */
+export const HEALTH_WINDOW_DAYS = 7;
+
+/**
+ * The query window for a refresh at `now`: from the local midnight of the
+ * sixth day before today, to now. Local calendar parts build both bounds so
+ * a UTC offset can never shift which dates the window covers.
+ */
+export function stepWindow(now: Date): { fromMs: number; toMs: number } {
+  const start = new Date(
+    now.getFullYear(), now.getMonth(), now.getDate() - (HEALTH_WINDOW_DAYS - 1),
+  );
+  return { fromMs: start.getTime(), toMs: now.getTime() };
+}
+
+export type HealthTotals =
+  | { kind: 'ok'; totals: Record<string, number> }
+  | { kind: 'error'; reason: string };
+
+/**
+ * Map one day's samples to a whole-number step total. HealthKit counts are
+ * doubles; the product shows whole numbers, so the sum rounds to nearest.
+ * Fragments of one date sum (disjoint intervals add up); a date with only a
+ * 0 sum stays a truthful 0.
+ */
+function mergeDayTotals(samples: DayStepSample[], now: Date): Record<string, number> {
+  const { fromMs, toMs } = stepWindow(now);
+  const totals: Record<string, number> = {};
+  for (const sample of samples) {
+    const steps = sample.steps;
+    const total = totals[localKeyOf(sample.startMs)];
+    totals[localKeyOf(sample.startMs)] = total === undefined ? steps : total + steps;
+  }
+  for (const [key, value] of Object.entries(totals)) {
+    totals[key] = Math.round(value);
+  }
+  // window validation below
+  return totals;
+}
+
+/** Stable local `YYYY-MM-DD` for a timestamp, on the device's own calendar. */
+function localKeyOf(ms: number): string {
+  const date = new Date(ms);
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Turn raw native samples into per-date totals — or an error. Any malformed
+ * sample (wrong shape, non-finite or negative steps) or any sample outside
+ * the requested window is an error for the whole read: a native payload the
+ * boundary cannot vouch for must never shrink into a success with fewer
+ * dates, and a bad sample must never render as data — not even as 0.
+ */
+export function samplesToLocalTotals(
+  samples: unknown, now: Date,
+): HealthTotals {
+  if (!Array.isArray(samples)) return { kind: 'error', reason: 'step read returned a malformed payload' };
+  const { fromMs, toMs } = stepWindow(now);
+  const totals: Record<string, number> = {};
+  for (const sample of samples) {
+    if (typeof sample !== 'object' || sample === null) {
+      return { kind: 'error', reason: 'step read returned a malformed sample' };
+    }
+    const { startMs, steps } = sample as { startMs?: unknown; steps?: unknown };
+    if (typeof startMs !== 'number' || !Number.isFinite(startMs)
+      || typeof steps !== 'number' || !Number.isFinite(steps) || steps < 0) {
+      return { kind: 'error', reason: 'step read returned a malformed sample' };
+    }
+    if (startMs < fromMs || startMs > toMs) {
+      return { kind: 'error', reason: 'step read returned a sample outside the requested window' };
+    }
+    const key = localKeyOf(startMs);
+    totals[key] = (totals[key] ?? 0) + steps;
+  }
+  for (const [key, value] of Object.entries(totals)) {
+    totals[key] = Math.round(value);
+  }
+  return { kind: 'ok', totals };
+}
+
+/**
+ * One refresh, end to end: window → native query → per-date totals. A null
+ * reader, a rejected promise, or a malformed payload is an error result —
+ * never an empty success — so the UI can never render a native failure as a
+ * zero-step day.
+ */
+export async function loadDailyStepTotals(
+  reader: HealthKitStepReader | null, now: Date,
+): Promise<HealthTotals> {
+  if (reader === null) return { kind: 'error', reason: 'HealthKit module is not available' };
+  const { fromMs, toMs } = stepWindow(now);
+  let samples: DayStepSample[];
+  try {
+    samples = await reader.readDailyStepTotals(fromMs, toMs);
+  } catch (cause) {
+    return { kind: 'error', reason: `step read failed: ${String(cause)}` };
+  }
+  return samplesToLocalTotals(samples, now);
+}
+
+/**
+ * What the UI knows about Health totals after the last refresh. In-memory
+ * only: `totals` is the last successful read (null = none this session),
+ * `lastRefreshMs` the last SUCCESSFUL refresh time, `error` the last failed
+ * refresh (kept alongside the totals it failed to replace).
+ */
+export interface HealthTotalsView {
+  totals: Record<string, number> | null;
+  lastRefreshMs: number | null;
+  refreshing: boolean;
+  error: string | null;
+}
+
+export const IDLE_HEALTH_TOTALS: HealthTotalsView = {
+  totals: null, lastRefreshMs: null, refreshing: false, error: null,
+};
+
+/**
+ * The single truthful-state rule for one date (issue #20 ACs): manual
+ * precedence first, then the last successful Health read, then the explicit
+ * transient and failure states, then the neutral no-data state — and only a
+ * not-connected permission state may say "when step data is connected".
+ * `manual` mirrors App's ManualState shapes; a failed manual read stays an
+ * error even when Health has data, because the stored record is unknown.
+ */
+export function resolveDaySnapshot(
+  manual: { kind: 'loading' } | { kind: 'failed' } | { kind: 'value'; total: number | null },
+  health: HealthTotalsView, permission: HealthPermissionState | null, dateKey: string,
+): TodaySnapshot {
+  if (manual.kind === 'loading') return { kind: 'loading' };
+  if (manual.kind === 'failed') return { kind: 'error' };
+  if (manual.total !== null) return { kind: 'loaded', steps: manual.total, source: 'manual' };
+  if (permission === 'granted') {
+    const steps = health.totals?.[dateKey];
+    if (typeof steps === 'number' && steps >= 0) {
+      return { kind: 'loaded', steps, source: 'health' };
+    }
+    if (health.refreshing) return { kind: 'loading' };
+    if (health.error !== null) return { kind: 'error' };
+    if (health.totals !== null) return { kind: 'empty' };
+  }
+  return { kind: 'unavailable' };
 }
