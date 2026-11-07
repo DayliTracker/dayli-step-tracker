@@ -1,0 +1,1 @@
+{"number":62,"title":"✨ [feat] api: backpressure guard","body":"## Problem\nBackpressure drops frames under load.\n\n## Fix\nRaise the guard in the stream client module.\n\n## Acceptance Criteria\n- [ ] guard trips at the threshold\n\n## Risk\n🟢 **Low** · one file\n\n## Blocked by\n- None.\n"}

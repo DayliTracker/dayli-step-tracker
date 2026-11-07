@@ -1,0 +1,28 @@
+{
+  "66": {
+    "number": 66,
+    "title": "✨ [feat] docs: glossary pass",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "proceed",
+    "tag": "clean",
+    "reason": "no duplicate, no overlap",
+    "evidence": []
+  },
+  "67": {
+    "number": 67,
+    "title": "✨ [feat] onboarding: tour tips",
+    "candidates": [],
+    "blockedBy": [
+      66
+    ],
+    "conflictWith": [],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "a lower-numbered card in this check touches the same files — build after it",
+    "evidence": [
+      "#66 touches e.g"
+    ]
+  }
+}

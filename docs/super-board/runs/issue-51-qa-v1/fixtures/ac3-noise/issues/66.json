@@ -1,0 +1,1 @@
+{"number":66,"title":"✨ [feat] docs: glossary pass","body":"## Problem\nTerms drift across pages, see e.g. the glossary.\n\n## Fix\nAlign wording in the prose docs.\n\n## Acceptance Criteria\n- [ ] terms match the glossary\n\n## Risk\n🟢 **Low** · prose only\n\n## Blocked by\n- None.\n"}

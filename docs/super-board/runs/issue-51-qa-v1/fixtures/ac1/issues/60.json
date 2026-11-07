@@ -1,0 +1,1 @@
+{"number":60,"title":"✨ [feat] home: duck mood ring","body":"## Problem\nThe home ring ignores the duck mood.\n\n## Fix\nRework the root-level `App.tsx` mood ring, the caller at `App.tsx:35`.\n\n## Acceptance Criteria\n- [ ] ring renders the mood\n\n## Risk\n🟢 **Low** · one file\n\n## Blocked by\n- None.\n"}

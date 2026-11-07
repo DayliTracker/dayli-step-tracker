@@ -1,0 +1,28 @@
+{
+  "60": {
+    "number": 60,
+    "title": "✨ [feat] home: duck mood ring",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "proceed",
+    "tag": "clean",
+    "reason": "no duplicate, no overlap",
+    "evidence": []
+  },
+  "61": {
+    "number": 61,
+    "title": "✨ [feat] settings: stepper rows",
+    "candidates": [],
+    "blockedBy": [
+      60
+    ],
+    "conflictWith": [],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "a lower-numbered card in this check touches the same files — build after it",
+    "evidence": [
+      "#60 touches App.tsx"
+    ]
+  }
+}

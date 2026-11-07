@@ -1,0 +1,24 @@
+{
+  "62": {
+    "number": 62,
+    "title": "✨ [feat] api: backpressure guard",
+    "candidates": [
+      {
+        "ref": "#70",
+        "kind": "open-pr",
+        "title": "✨ [feat] api: stream retries",
+        "sim": 0.33
+      }
+    ],
+    "blockedBy": [],
+    "conflictWith": [
+      70
+    ],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "open PRs touch the same files — build after them",
+    "evidence": [
+      "open PR #70 touches src/api/stream.ts"
+    ]
+  }
+}

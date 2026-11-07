@@ -1,0 +1,1 @@
+{"number":65,"title":"🔧 [chore] board: preflight quoting hardening","body":"## Problem\nThe preflight breaks on quoted args.\n\n## Fix\nHarden `.claude/bin/super-board-preflight.sh` quoting.\n\n## Acceptance Criteria\n- [ ] quoted args survive\n\n## Risk\n🟢 **Low** · one file\n\n## Blocked by\n- None.\n"}

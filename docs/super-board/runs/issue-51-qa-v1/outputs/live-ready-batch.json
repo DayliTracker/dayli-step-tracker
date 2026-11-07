@@ -1,0 +1,42 @@
+{
+  "2": {
+    "number": 2,
+    "title": "🎨 [feature] phase-1: approve UX flows and visual system",
+    "candidates": [
+      {
+        "ref": "#7",
+        "kind": "merged-pr",
+        "title": "📝 [docs] phase-1: define UX flows and visual system",
+        "sim": 0.5
+      },
+      {
+        "ref": "#13",
+        "kind": "closed-issue",
+        "title": "✨ [feature] ui: load Nunito and Lexend per visual system",
+        "sim": 0.3
+      }
+    ],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "hold",
+    "tag": "done",
+    "reason": "already delivered",
+    "evidence": [
+      "PR #7 merged and closes #2"
+    ]
+  },
+  "14": {
+    "number": 14,
+    "title": "✨ [feature] mascot: bring the animated PixelPet into the shell",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [],
+    "verdict": "hold",
+    "tag": "done",
+    "reason": "already delivered",
+    "evidence": [
+      "PR #33 merged and closes #14",
+      "PR #33 merged: \"✨ [feat] mascot: bring the animated PixelPet into the shell\""
+    ]
+  }
+}

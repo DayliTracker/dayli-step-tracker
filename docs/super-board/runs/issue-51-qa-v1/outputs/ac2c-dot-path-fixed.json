@@ -1,0 +1,17 @@
+{
+  "65": {
+    "number": 65,
+    "title": "🔧 [chore] board: preflight quoting hardening",
+    "candidates": [],
+    "blockedBy": [],
+    "conflictWith": [
+      71
+    ],
+    "verdict": "sequence",
+    "tag": "overlap",
+    "reason": "open PRs touch the same files — build after them",
+    "evidence": [
+      "open PR #71 touches .claude/bin/super-board-preflight.sh"
+    ]
+  }
+}
