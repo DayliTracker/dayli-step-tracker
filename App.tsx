@@ -50,7 +50,7 @@ import PixelPet, {
   type PixelPetHandle, type PixelPetParticles,
 } from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
-import { PETS } from './components/pets';
+import { PETS, petForId, type Pet } from './components/pets';
 import { STROLL_HOLD_MS, countFlips, isWiggle } from './src/moods';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant } from './src/tokens';
 
@@ -79,9 +79,6 @@ const STEP = 100;
 // so the mini duck renders 48pt.
 const MINI_DUCK_SIZE = 48;
 const MINI_DUCK_HOME_MS = 500;
-// The character slot takes the first registered pet; the registry grows as
-// /mascot lands new animals (components/pets.ts).
-const pet = PETS[0];
 
 /**
  * Language preferences after launch. `deviceLocale` is resolved once per
@@ -193,11 +190,28 @@ export default function App() {
     : 'en'; // held behind the launch gate below, so this value never paints
   const languageOverride: Locale | null =
     prefs.kind === 'ready' ? prefs.prefs?.languageOverride ?? null : null;
+  // The mascot choice (mascots#2's switcher): the stored registry id resolved
+  // against components/pets.ts — an id the registry no longer knows falls back
+  // to the shipped default. Both preference writes below save the whole
+  // document (language + mascot), so one never erases the other.
+  const petId = prefs.kind === 'ready' ? prefs.prefs?.petId ?? null : null;
+  const pet = petForId(petId);
   // A saved override persists immediately; clearing it returns to the
   // device-derived language at once and on the next launch. A failed write
   // keeps the previous selection and surfaces the reason — never a fake save.
   const applyLanguage = (override: Locale | null) => {
-    void savePreferences(AsyncStorage, { languageOverride: override }).then((result) => {
+    void savePreferences(AsyncStorage, { languageOverride: override, petId }).then((result) => {
+      setPrefs((state) => {
+        if (state.kind !== 'ready') return state;
+        if (result.kind === 'error') return { ...state, error: result.reason };
+        return { kind: 'ready', deviceLocale: state.deviceLocale, prefs: result.value, error: null };
+      });
+    });
+  };
+  // The mascot choice persists the same way (mascots#2): immediately, the
+  // whole document, and a failed write keeps the previous selection.
+  const applyPet = (id: string) => {
+    void savePreferences(AsyncStorage, { languageOverride, petId: id }).then((result) => {
       setPrefs((state) => {
         if (state.kind !== 'ready') return state;
         if (result.kind === 'error') return { ...state, error: result.reason };
@@ -407,13 +421,14 @@ export default function App() {
             onRefresh={refreshHealthTotals} tintColor={colors.text} />
         }>
         <Today locale={locale} manual={manual} health={healthTotals} healthPerm={healthPerm}
+          pet={pet}
           goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL}
           onOpenSettings={openSettingsFromHome} petRef={petRef} />
       </ScrollView>
     );
   } else if (nav.screen === 'settings') {
     page = <SettingsPage locale={locale} onNavigate={send} onClear={confirmClear}
-      clearError={clearError} goalSubtitle={goalSubtitle}
+      clearError={clearError} goalSubtitle={goalSubtitle} pet={pet}
       goalHistory={goalHistory} manual={manual} onApply={applyManualTotal}
       onRemove={applyManualRemoval}
       healthTotals={healthTotals} healthPerm={healthPerm} />;
@@ -423,6 +438,7 @@ export default function App() {
         languageOverride={languageOverride}
         storageError={prefs.kind === 'ready' ? prefs.error : null}
         onLanguage={applyLanguage}
+        petId={petId} onPet={applyPet}
         currentGoal={currentGoal} canSaveGoal={goalHistory !== null}
         goalStorageError={goalsError} onGoal={applyGoal}
         healthState={healthPerm} healthReadError={health.kind === 'ready' ? health.error : null}
@@ -516,9 +532,9 @@ function Header({ title, icon, action, label, onPress, side }: {
  * every one of them composes with the swipe: a busy duck ignores new moods,
  * and no mood ever delays the screen change.
  */
-function Today({ locale, goal, manual, health, healthPerm, onOpenSettings, petRef }: {
+function Today({ locale, goal, manual, health, healthPerm, pet, onOpenSettings, petRef }: {
   locale: Locale; goal: number; manual: ManualState; health: HealthTotalsView;
-  healthPerm: HealthPermissionState | null;
+  healthPerm: HealthPermissionState | null; pet: Pet;
   onOpenSettings: () => void; petRef: RefObject<PixelPetHandle | null>;
 }) {
   const copy = getCopy(locale);
@@ -767,13 +783,13 @@ function Progress({ locale, goalHistory, manual, health, healthPerm, onOpenStepp
  * the same store), removes the date's manual total through the same owner
  * when it holds one, never navigates, and Cancel throws the draft away.
  */
-function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply, onRemove, healthTotals, healthPerm }: {
+function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply, onRemove, healthTotals, healthPerm, pet }: {
   locale: Locale; onNavigate: (action: NavigationAction) => void;
   onClear: () => void; clearError: string | null; goalSubtitle: string;
   goalHistory: GoalHistory | null; manual: ManualState;
   onApply: (dateKey: string, value: number) => void;
   onRemove: (dateKey: string) => void;
-  healthTotals: HealthTotalsView; healthPerm: HealthPermissionState | null;
+  healthTotals: HealthTotalsView; healthPerm: HealthPermissionState | null; pet: Pet;
 }) {
   const copy = getCopy(locale);
   // Home is the only root (prototype v2): Settings always returns there.
@@ -829,6 +845,7 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   })[] = [
     { destination: 'goal', title: copy.goalTitle, subtitle: goalSubtitle },
     { destination: 'language', title: copy.languageTitle, subtitle: copy.languageSubtitle },
+    { destination: 'mascot', title: copy.mascotTitle, subtitle: copy.mascotSubtitle },
     { destination: 'health', title: copy.healthTitle, subtitle: copy.healthSubtitle },
     { title: copy.clearTitle, subtitle: copy.clearSubtitle, clear: true },
   ];
@@ -925,10 +942,11 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   );
 }
 
-function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, currentGoal, canSaveGoal, goalStorageError, onGoal, healthState, healthReadError, healthRequestError, healthTotals, onHealthRequest }: {
+function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, petId, onPet, currentGoal, canSaveGoal, goalStorageError, onGoal, healthState, healthReadError, healthRequestError, healthTotals, onHealthRequest }: {
   destination: SettingsDestination; locale: Locale; onNavigate: (action: NavigationAction) => void;
   languageOverride: Locale | null; storageError: string | null;
   onLanguage: (override: Locale | null) => void;
+  petId: string | null; onPet: (id: string) => void;
   currentGoal: number; canSaveGoal: boolean; goalStorageError: string | null;
   onGoal: (value: number) => void;
   healthState: HealthPermissionState | null; healthReadError: string | null;
@@ -936,8 +954,10 @@ function DestinationPage({ destination, locale, onNavigate, languageOverride, st
   onHealthRequest: () => void;
 }) {
   const copy = getCopy(locale);
-  const title = { goal: copy.goalTitle, language: copy.languageTitle, health: copy.healthTitle }[destination];
-  const detail = destination === 'language' ? copy.languagePersisted : null;
+  const title = { goal: copy.goalTitle, language: copy.languageTitle,
+    mascot: copy.mascotTitle, health: copy.healthTitle }[destination];
+  const detail = destination === 'language' ? copy.languagePersisted
+    : destination === 'mascot' ? copy.mascotPersisted : null;
   return (
     <ScrollView contentContainerStyle={s.content}>
       <Header title={title} action={copy.backToSettings} label={copy.backToSettings}
@@ -973,6 +993,29 @@ function DestinationPage({ destination, locale, onNavigate, languageOverride, st
               );
             })}
             {storageError && <Text style={s.languageError}>{copy.languageStorageError}</Text>}
+          </View>
+        )}
+        {/* The mascot switcher (mascots#2): one radio row per registered pet,
+            the same immediate-persist contract as the language page — the
+            whole preferences document is written by onPet, the home duck and
+            the mini duck re-render from the same selection. */}
+        {destination === 'mascot' && (
+          <View style={s.list}>
+            {PETS.map((option) => {
+              const label = option.id === 'smooth-duck'
+                ? copy.mascotSmoothDuck : copy.mascotPixelDuck;
+              return (
+                <Pressable key={option.id} accessibilityRole="radio"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: option.id === petId }}
+                  onPress={() => onPet(option.id)}
+                  style={[s.languageRow, option.id === petId && s.languageSelected]}>
+                  <Text style={s.rowTitle}>{label}</Text>
+                  {option.id === petId && <Text style={s.selected}>{copy.selected}</Text>}
+                </Pressable>
+              );
+            })}
+            {storageError && <Text style={s.languageError}>{copy.mascotStorageError}</Text>}
           </View>
         )}
       </View>

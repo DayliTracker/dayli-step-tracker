@@ -10,9 +10,13 @@ export const PREFERENCES_KEY = 'dayli.preferences.v1';
 export interface Preferences {
   /** The saved language override; null follows the device locale. */
   languageOverride: Locale | null;
+  /** The saved mascot (components/pets.ts registry id); null is the shipped
+      default. Stored as an opaque string: the registry resolves it, so an id
+      a later release retired falls back to the default, never to a crash. */
+  petId: string | null;
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { languageOverride: null };
+export const DEFAULT_PREFERENCES: Preferences = { languageOverride: null, petId: null };
 
 /**
  * The async key-value backend local data persists through. The app wires
@@ -37,7 +41,9 @@ export type StorageResult<T> =
   | { kind: 'error'; reason: string };
 
 /** Recognize only the exact stored shape; anything else is an error, not a
- * silent reset to defaults. */
+    silent reset to defaults. `petId` is additive (mascots#2): a document
+    saved before the field existed parses with the default petId, so an
+    existing install's language override survives the upgrade. */
 function parsePreferences(raw: string): Preferences | null {
   let doc: unknown;
   try {
@@ -48,7 +54,9 @@ function parsePreferences(raw: string): Preferences | null {
   if (typeof doc !== 'object' || doc === null || Array.isArray(doc)) return null;
   const override = (doc as { languageOverride?: unknown }).languageOverride;
   if (override !== null && override !== 'en' && override !== 'vi') return null;
-  return { languageOverride: override };
+  const petId = 'petId' in doc ? (doc as { petId: unknown }).petId : null;
+  if (petId !== null && typeof petId !== 'string') return null;
+  return { languageOverride: override, petId };
 }
 
 /**

@@ -104,19 +104,35 @@ test('a11y label never doubles a period in any snapshot kind or locale', () => {
   assert.doesNotMatch(loading, /…\./, 'an ellipsis slot must not gain a period after it');
 });
 
-test('mascot pack ships every frame and particle, and the registry mounts the duck', () => {
+test('mascot packs ship every frame and particle, and the registry mounts both ducks', () => {
+  for (const frame of [
+    'smooth-duck_idle', 'smooth-duck_blink', 'smooth-duck_look',
+    'smooth-duck_walk_a', 'smooth-duck_walk_b', 'smooth-duck_happy',
+    'smooth-duck_surprised', 'particle_heart', 'particle_star',
+  ]) {
+    assert.ok(
+      existsSync(new URL(`../assets/mascots/smooth-duck/${frame}.png`, import.meta.url)),
+      `${frame}.png must ship in the smooth pack`,
+    );
+  }
   for (const frame of [
     'duck_idle', 'duck_blink', 'duck_look', 'duck_walk_a', 'duck_walk_b',
     'duck_happy', 'duck_surprised', 'particle_heart', 'particle_star',
   ]) {
     assert.ok(
-      existsSync(new URL(`../assets/mascots/duck/${frame}.png`, import.meta.url)),
-      `${frame}.png must ship in the pack`,
+      existsSync(new URL(`../assets/mascots/pixel-duck/${frame}.png`, import.meta.url)),
+      `${frame}.png must ship in the pixel fallback pack`,
     );
   }
-  assert.match(registrySource, /id: 'duck'/);
+  assert.match(registrySource, /id: 'smooth-duck'/);
+  assert.match(registrySource, /id: 'pixel-duck'/);
+  for (const frame of ['smooth-duck_idle', 'smooth-duck_surprised', 'particle_heart', 'particle_star']) {
+    assert.match(registrySource,
+      new RegExp(`require\\('\\.\\./assets/mascots/smooth-duck/${frame}\\.png'\\)`));
+  }
   for (const frame of ['duck_idle', 'duck_surprised', 'particle_heart', 'particle_star']) {
-    assert.match(registrySource, new RegExp(`require\\('\\.\\./assets/mascots/duck/${frame}\\.png'\\)`));
+    assert.match(registrySource,
+      new RegExp(`require\\('\\.\\./assets/mascots/pixel-duck/${frame}\\.png'\\)`));
   }
 });
 

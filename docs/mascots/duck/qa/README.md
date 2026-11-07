@@ -1,16 +1,44 @@
-# Smooth-art duck pack · QA evidence
+# Mascot QA evidence · smooth duck (shipped) + pixel duck (fallback)
 
-Per-frame PNGs + contact sheet rendered from the committed SVG sources by
-`scripts/mascots/duck`'s build script (`scripts/mascots/build-smooth-frames.sh`,
-pinned librsvg `rsvg-convert` 2.61.0). Each file here is a byte-copy (`cmp`)
-of the shipped pack in `assets/mascots/duck/`; the pack tests pin that identity
-(`tests/smooth-frames.test.mjs`) along with the transparency contract — every
-frame and particle keeps fully transparent corners, the property the retired
-QuickLook rasterizer flattened to white (PR #46 rebuild R1).
+The app's mascot QA directory (mascots#2's Gate 3). Two packs ship:
 
-In-app per-state captures (idle, blink, look, celebrate, poke on device or
-simulator) live under `docs/super-board/runs/issue-45-qa-v*/`.
+- **Smooth duck** — the shipped default. The Gate-1-polished pack vendored
+  byte-exact from `DayliTracker/mascots@516a5b7`
+  (`scripts/mascots/packs/smooth-duck.mjs`), rendered by the vendored smooth
+  engine (`scripts/mascots/smooth-engine.mjs`, pinned `@resvg/resvg-js`
+  2.6.2) into `assets/mascots/smooth-duck/`. The engine's `manifest.json` and
+  `contact_sheet.png` are the pack's evidence; the validator
+  (`scripts/mascots/validate-smooth-frames.mjs`) gates the delivery
+  (files · manifest · dimensions · alpha-in-silhouette · registration ·
+  byte-for-byte determinism) and is pinned by `tests/smooth-frames.test.mjs`.
+- **Pixel duck** — the switchable fallback. The original pack
+  (`scripts/mascots/packs/duck.mjs`, byte-identical to mascots@516a5b7's)
+  rendered by the zero-dependency pixel engine into
+  `assets/mascots/pixel-duck/`, gated by
+  `scripts/mascots/validate-frames.mjs` and pinned by
+  `tests/pixel-frames.test.mjs`.
 
-The pre-smooth pixel-era in-app shots from the phase-1 adoption are archived,
-annotated as superseded, under `pixel-archive/` — including the engine-lineage
-notes on the walk-unreachable limitation (`pixel-archive/README.md`).
+## Per-state captures (this directory)
+
+`state-<mood>.png` files are in-app iOS-simulator captures of the SHIPPED
+smooth duck playing each mood of the app's repertoire (`components/PixelPet.tsx`):
+each is one observable Gate-3 state, committed to the branch as the QA
+record. `tests/mascot-qa.test.mjs` pins the captured set.
+
+Captured: `state-idle`, `state-walk`, `state-celebrate`, `state-poke`,
+`state-sleep`, `state-hop`, `state-stroll`.
+
+**Not captured — dizzy.** The wiggle verdict needs a multi-reversal drag on
+the duck (`isWiggle`: ≥2 direction flips, whole excursion ≤140px,
+`src/moods.ts`); the automation backends here (idb taps/swipes, single-stroke
+gestures) cannot produce a compliant zigzag, and faking it with a screenshot
+of another state would be a false record. The state plays in-app by hand
+(wiggle the duck) — drive it manually when verifying on device.
+
+The pre-mascots#2 evidence layout (per-frame byte-copies of the #45
+prototype-SVG pack, `today-*.png` shell captures) is superseded: the #45
+pack is retired from the app (git history keeps it), and the shell captures
+moved under `pixel-archive/`-style provenance notes in the pack READMEs.
+The pixel-era in-app shots and engine-lineage notes stay under
+`pixel-archive/` (annotated as superseded there, including the walk-unreachable
+limitation of the retired 4-state pixel engine generation).

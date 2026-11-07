@@ -1,4 +1,4 @@
-export type SettingsDestination = 'goal' | 'language' | 'health';
+export type SettingsDestination = 'goal' | 'language' | 'mascot' | 'health';
 export type Screen = 'today' | 'settings' | SettingsDestination;
 export type NavigationState = { screen: Screen };
 export type NavigationAction =
@@ -27,7 +27,8 @@ export function navigate(state: NavigationState, action: NavigationAction): Navi
       if (state.screen === 'settings') {
         return { ...state, screen: 'today' };
       }
-      if (state.screen === 'goal' || state.screen === 'language' || state.screen === 'health') {
+      if (state.screen === 'goal' || state.screen === 'language'
+        || state.screen === 'mascot' || state.screen === 'health') {
         return { ...state, screen: 'settings' };
       }
       return state;
