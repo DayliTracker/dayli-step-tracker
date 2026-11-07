@@ -39,8 +39,8 @@ import {
 } from './src/today';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import PixelPet, {
-  LEAD_MS, type PixelPetEvent, type PixelPetFrames, type PixelPetHandle,
-  type PixelPetParticles,
+  HeartBurst, LEAD_MS, type PixelPetEvent, type PixelPetFrames,
+  type PixelPetHandle, type PixelPetParticles,
 } from './components/PixelPet';
 import ChatBubble, { type BubbleEvent } from './components/ChatBubble';
 import { PETS } from './components/pets';
@@ -53,6 +53,10 @@ import { colors, radius, spacing, typeFace, typeLeading, typeSize, typeVariant }
 // mascot state draws over the text above it.
 const PET_SIZE = 200;
 const PET_SLOT_HEADROOM = PET_SIZE * 0.6;
+// The talk box docks 2pt above the slot's top edge (prototype .bubble
+// bottom: 322px against the 320px slot) so its tail hangs down through the
+// headroom the way the prototype's does.
+const PET_SLOT_BUBBLE_LIFT = 2;
 // The footprints mark beside the step count mirrors the prototype's 24px
 // 👣 (prototype/textless-shell v6 .steps-icon).
 const FOOTPRINT_SIZE = 24;
@@ -63,6 +67,9 @@ const SLIDE_OFFSET = 70;
 // floor (and the store's 100,000 ceiling), and the mini duck follows the
 // poke home after .5s.
 const STEP = 100;
+// Accepted deviation, recorded: the prototype's .mini-duck is 44px, but 48
+// is the tested contract (tests/shell.test.mjs) and the run's design context,
+// so the mini duck renders 48pt.
 const MINI_DUCK_SIZE = 48;
 const MINI_DUCK_HOME_MS = 500;
 // The character slot takes the first registered pet; the registry grows as
@@ -328,10 +335,11 @@ function Header({ title, icon, action, label, onPress, side }: {
     <View style={s.header}>
       <View style={s.headerTitle}>
         <Text style={s.eyebrow}>DAYLI STEP TRACKER</Text>
-        <Text style={s.title}>{title}</Text>
+        <Text accessibilityRole="header" style={s.title}>{title}</Text>
       </View>
       <View style={s.headerSide}>
-        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.headerAction}>
+        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+          style={({ pressed }) => [s.headerAction, pressed && s.pressedStrong]}>
           {/* Glyph actions render as vector icons (issue #28); text actions are
               the bilingual back labels. Either way the Pressable's label is the
               only name VoiceOver reads. */}
@@ -506,7 +514,8 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
         importantForAccessibility="no-hide-descendants"
         style={s.petSlot}
       >
-        <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent} />
+        <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent}
+          dockBottom={PET_SIZE + PET_SLOT_HEADROOM + PET_SLOT_BUBBLE_LIFT} />
         <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
           size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} onDuckTouch={onDuckTouch} />
       </View>
@@ -522,6 +531,7 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
         </Text>
         <MaterialCommunityIcons
           name="shoe-print" size={FOOTPRINT_SIZE} color={colors.text}
+          style={s.footprint}
           accessible={false}
         />
       </View>
@@ -568,17 +578,18 @@ function Progress({ locale, goalHistory, manual, onOpenStepper }: {
           // date + total only, the full sentence in the accessibility label.
           <Pressable key={dateKey} accessibilityRole="button"
             accessibilityLabel={progressRowA11yLabel(label, snapshot, rowGoal, locale, copy)}
-            onPress={() => onOpenStepper(dateKey)} style={s.progressRow}>
+            onPress={() => onOpenStepper(dateKey)}
+            style={({ pressed }) => [s.progressRow, pressed && s.pressedGentle]}>
             <View style={s.rowTop}>
               <Text style={s.rowTitle}>{label}</Text>
               <View style={s.rowValueWrap}>
                 <Text style={s.rowValue}>{total !== null ? formatNumber(total, locale) : '—'}</Text>
-                {total !== null && (
-                  <MaterialCommunityIcons
-                    name="shoe-print" size={16} color={colors.text}
-                    accessible={false}
-                  />
-                )}
+                {/* The mark rides every row value (prototype v3 row value:
+                    '— 👣' on no-data days too, like home's own pill). */}
+                <MaterialCommunityIcons
+                  name="shoe-print" size={16} color={colors.text}
+                  accessible={false}
+                />
               </View>
             </View>
           </Pressable>
@@ -691,11 +702,12 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
       {stepper !== null && (
         <View style={s.overlay} accessibilityViewIsModal>
           <View style={s.editorCard}>
-            <Text style={s.alertTitle}>{stepperLabel}</Text>
+            <Text accessibilityRole="header" style={s.alertTitle}>{stepperLabel}</Text>
             <View style={s.stepperRow}>
               <Pressable accessibilityRole="button"
                 accessibilityLabel={copy.stepperDecrease}
-                onPress={() => stepDelta(-STEP)} style={s.stepButton}>
+                onPress={() => stepDelta(-STEP)}
+                style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
                 <Text style={s.stepButtonText}>−</Text>
               </Pressable>
               {/* The readout's label carries the number — a label of copy
@@ -706,18 +718,21 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
               </Text>
               <Pressable accessibilityRole="button"
                 accessibilityLabel={copy.stepperIncrease}
-                onPress={() => stepDelta(STEP)} style={s.stepButton}>
+                onPress={() => stepDelta(STEP)}
+                style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
                 <Text style={s.stepButtonText}>+</Text>
               </Pressable>
             </View>
+            {/* Prototype .alert-actions: borderless text buttons spread with
+                space-around — the accentText green IS Save's confirm weight. */}
             <View style={s.stepperActions}>
               <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
                 onPress={() => setStepper(null)} style={s.stepperAction}>
-                <Text style={s.stepButtonText}>{copy.cancel}</Text>
+                <Text style={s.stepperActionText}>{copy.cancel}</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
                 onPress={saveStepper} style={s.stepperAction}>
-                <Text style={s.stepButtonText}>{copy.manualSave}</Text>
+                <Text style={s.stepperActionText}>{copy.manualSave}</Text>
               </Pressable>
             </View>
           </View>
@@ -835,19 +850,16 @@ function MiniDuck({ frames, particles, label, onHome }: {
   label: string; onHome: () => void;
 }) {
   const [poked, setPoked] = useState(false);
+  // The poke plays the same rising heart as the home duck (PixelPet's
+  // HeartBurst), at the mini duck's size — each poke remounts the burst
+  // (key), which restarts the shared driver.
+  const [burst, setBurst] = useState(0);
   const busy = useRef(false);
-  // The rising heart rides its own driver, started on the poke like the
-  // home duck's (PixelPet's playHeart) — the small version of the same burst.
-  const miniHeart = useRef(new Animated.Value(0)).current;
   const poke = () => {
     if (busy.current) return;
     busy.current = true;
     setPoked(true);
-    miniHeart.setValue(0);
-    Animated.timing(miniHeart, {
-      toValue: 1, duration: 750, easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
+    setBurst((k) => k + 1);
     setTimeout(() => {
       setPoked(false);
       onHome();
@@ -857,16 +869,12 @@ function MiniDuck({ frames, particles, label, onHome }: {
     <Pressable accessibilityRole="button" accessibilityLabel={label}
       onPress={poke} style={s.miniDuck}>
       {poked && (
-        <Animated.Image
+        <HeartBurst
+          key={burst}
           source={particles.heart}
-          style={[s.miniHeart, {
-            opacity: miniHeart.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] }),
-            transform: [{
-              translateY: miniHeart.interpolate({
-                inputRange: [0, 1], outputRange: [0, -MINI_DUCK_SIZE * 0.7],
-              }),
-            }],
-          }]}
+          size={MINI_DUCK_SIZE * 0.4}
+          riseFrom={0}
+          riseTo={-MINI_DUCK_SIZE * 0.7}
         />
       )}
       <Image
@@ -895,22 +903,39 @@ const s = StyleSheet.create({
     backgroundColor: colors.accent },
   actionText: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
     textAlign: 'center' },
+  // Pressed feedback where the prototype specifies :active (v6): the mint
+  // header action and the stepper −/+ dim to brightness(.95), the date rows
+  // to brightness(.97) — opacity is the RN equivalent on both platforms.
+  pressedStrong: { opacity: 0.95 },
+  pressedGentle: { opacity: 0.97 },
   // The textless home: content anchored near the top so the duck sits high
   // (the prototype's 9vh top anchor on a full-height phone).
   hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  // The prototype zeroes the slot's top margin on the textless home
+  // (.home-slot { margin-top: 0 }) — the duck anchors high on the hero's
+  // padding alone. The slot is the talk box's containing block
+  // (.pet-slot { position: relative }): its dock pins to the headroom top.
   petSlot: {
-    marginTop: spacing.section, alignSelf: 'center', alignItems: 'center',
+    position: 'relative', alignSelf: 'center', alignItems: 'center',
     height: PET_SIZE + PET_SLOT_HEADROOM, justifyContent: 'flex-end',
   },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
     fontVariant: typeVariant.tabularNums },
+  // The glyph's em-box carries descender space, so inside the pill's baseline
+  // row its visual bottom rides high; the optical nudge drops it onto the
+  // digits' baseline the way the prototype's 👣 sits (spacing.xs = 3).
+  footprint: { transform: [{ translateY: spacing.xs }] },
   // Count + footprints mark on the textless home: one baseline row like the
-  // prototype's steps-pill (row direction, gap 10, padding 8).
+  // prototype's steps-pill (row direction, gap 10, padding 8 vertical /
+  // 14 horizontal). The prototype centers the shrink-to-fit pill under the
+  // duck (.home align-items:center) — alignSelf:center shrink-wraps it onto
+  // the duck's axis instead of stretching and packing left.
   stepsPill: {
-    marginTop: spacing.xl, flexDirection: 'row', alignItems: 'baseline',
-    gap: spacing.xl, padding: spacing.lg,
+    marginTop: spacing.lg, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'baseline', gap: spacing.xl,
+    paddingVertical: spacing.lg, paddingHorizontal: spacing.gutter,
   },
   summary: { color: colors.text, fontSize: typeSize.body, lineHeight: typeLeading.relaxed,
     fontFamily: typeFace.text.regular, textAlign: 'center', marginTop: spacing.section },
@@ -926,12 +951,14 @@ const s = StyleSheet.create({
   },
   rowTitle: { color: colors.text, fontSize: typeSize.body, fontFamily: typeFace.text.bold,
     flexShrink: 1 },
-  rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold },
+  rowValue: { color: colors.text, fontSize: typeSize.label, fontFamily: typeFace.text.bold,
+    fontVariant: typeVariant.tabularNums },
   rowValueWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   // The tappable date row (prototype v3) doubles as its own control: the
-  // 84-point card is the touch target, well past the 48-point floor.
+  // 60-point band is the prototype's .row height and stays past the 48-point
+  // floor (tests/progress.test.mjs).
   progressRow: {
-    minHeight: 84, padding: spacing.gutter, marginBottom: spacing.xl, borderRadius: radius.row,
+    minHeight: 60, padding: spacing.gutter, marginBottom: spacing.xl, borderRadius: radius.row,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
     justifyContent: 'center',
   },
@@ -976,28 +1003,42 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   miniDuckImage: { width: MINI_DUCK_SIZE, height: MINI_DUCK_SIZE },
-  miniHeart: { position: 'absolute', width: MINI_DUCK_SIZE * 0.4,
-    height: MINI_DUCK_SIZE * 0.4 * (6 / 7), top: 0 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: colors.overlayDim, alignItems: 'center', justifyContent: 'center' },
-  editorCard: { width: '82%', alignItems: 'center', padding: spacing.page,
-    borderRadius: radius.card, backgroundColor: colors.card, borderWidth: 1,
-    borderColor: colors.border },
-  alertTitle: { color: colors.text, fontSize: typeSize.heading, fontFamily: typeFace.text.bold },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxl,
-    marginVertical: spacing.section },
-  stepButton: { minWidth: 56, minHeight: 48, paddingHorizontal: spacing.gutter,
-    alignItems: 'center', justifyContent: 'center', borderRadius: radius.control,
+  // The stepper popup card (prototype .editor): 300pt wide, 18pt corners,
+  // 20/18 padding, translucent canvas — no border, lifted by a soft shadow
+  // tinted with the scrim token (prototype 0 12px 40px rgba(0,0,0,.3);
+  // CALayer's radius is the CSS blur's half).
+  editorCard: { width: 300, alignItems: 'center', paddingVertical: spacing.page,
+    paddingHorizontal: spacing.section, borderRadius: radius.popup,
+    backgroundColor: colors.popup, shadowColor: colors.overlayDim,
+    shadowOffset: { width: 0, height: 12 }, shadowOpacity: 1, shadowRadius: 20 },
+  // Popup title (prototype .alert-title): Nunito 800, 17pt, centered.
+  alertTitle: { color: colors.text, fontSize: typeSize.alertTitle,
+    fontFamily: typeFace.display.heavy, textAlign: 'center' },
+  // Stepper band (prototype .stepper): gap 18, margin 14 top / 10 bottom.
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.section,
+    marginTop: spacing.gutter, marginBottom: spacing.xl },
+  // −/+ buttons (prototype .step-btn): 52×52, 16pt corners, borderSoft
+  // hairline on the mint fill.
+  stepButton: { minWidth: 52, minHeight: 52, alignItems: 'center', justifyContent: 'center',
+    borderRadius: radius.action, borderWidth: 1, borderColor: colors.borderSoft,
     backgroundColor: colors.accent },
-  stepButtonText: { color: colors.text, fontSize: typeSize.heading,
+  stepButtonText: { color: colors.text, fontSize: typeSize.stepGlyph,
+    fontFamily: typeFace.text.heavy },
+  // Readout (prototype .editor-count): 32pt, 110pt min width.
+  editorValue: { color: colors.text, fontSize: typeSize.alertCount,
+    fontFamily: typeFace.text.heavy, fontVariant: typeVariant.tabularNums,
+    minWidth: 110, textAlign: 'center' },
+  // Actions (prototype .alert-actions/.alert-btn): borderless accentText
+  // text buttons spread with space-around — the green is Save's confirm
+  // weight; Cancel and Save render as equals in shape, never as twin pills.
+  stepperActions: { flexDirection: 'row', alignSelf: 'stretch',
+    justifyContent: 'space-around' },
+  stepperAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: spacing.xxl },
+  stepperActionText: { color: colors.accentText, fontSize: typeSize.small,
     fontFamily: typeFace.text.bold },
-  editorValue: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
-    fontVariant: typeVariant.tabularNums, minWidth: 96, textAlign: 'center' },
-  stepperActions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch',
-    justifyContent: 'center' },
-  stepperAction: { minHeight: 48, flex: 1, maxWidth: 150, alignItems: 'center',
-    justifyContent: 'center', borderRadius: radius.action, borderWidth: 1,
-    borderColor: colors.borderSoft, backgroundColor: colors.accentSoft },
-  divider: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border,
+  divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
     marginTop: spacing.section, marginBottom: spacing.section },
 });

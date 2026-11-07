@@ -100,7 +100,9 @@ test('each date row is its own labeled control carrying the full sentence', () =
   // stepper, so no control can be flattened away by an accessible container.
   const pressable = block.indexOf('<Pressable');
   assert.ok(pressable >= 0, 'the date row is a Pressable');
-  const row = block.slice(pressable, block.indexOf('style={s.progressRow}', pressable));
+  // The style prop is a pressed-state function now (prototype .row:active),
+  // so the slice runs to the style function's closing braces.
+  const row = block.slice(pressable, block.indexOf('}>', pressable));
   assert.match(row, /accessibilityRole="button"/);
   assert.match(row, /accessibilityLabel=\{progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)\}/);
   assert.match(row, /onPress=\{\(\) => onOpenStepper\(dateKey\)\}/);

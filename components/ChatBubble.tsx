@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet, Text, View } from 'react-native';
 import { dateIdleLine, eventLine, idleLine, type Locale } from '../src/localization';
 import { colors, radius, spacing, typeFace, typeLeading, typeSize } from '../src/tokens';
 
@@ -28,6 +28,12 @@ type ChatBubbleProps = {
   dateKey: string;
   /** Newest event to speak; a bumped nonce replays even a repeated category. */
   event: BubbleEvent | null;
+  /** Distance from the pet slot's bottom edge to the talk box's bottom edge,
+      computed by the slot owner (App.tsx) from the slot geometry it owns —
+      the prototype's .bubble { bottom: 322px } against the 320px slot: the
+      box rides 2px above the slot's top and its tail hangs down into the
+      headroom. */
+  dockBottom: number;
 };
 
 /**
@@ -42,10 +48,27 @@ type ChatBubbleProps = {
  * accessibility order — the Today group's label stays the screen-reader
  * source, and the duck's tap target keeps its own label.
  */
-export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) {
+export default function ChatBubble({ locale, dateKey, event, dockBottom }: ChatBubbleProps) {
   const [line, setLine] = useState<string | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(6)).current;
+  // Reduce Motion (OS setting): the line still fades (opacity), but the 6pt
+  // rise holds at 0 — the bubble never moves, it only appears and dissolves.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduceMotion(on); })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (on) => setReduceMotion(on),
+    );
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -57,16 +80,20 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       opacity.stopAnimation();
       rise.stopAnimation();
       opacity.setValue(0);
-      rise.setValue(6);
+      rise.setValue(reduceMotion ? 0 : 6);
       setLine(text);
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true }),
-        Animated.timing(rise, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
+        ...(reduceMotion ? [] : [
+          Animated.timing(rise, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
+        ]),
       ]).start();
       later(HOLD_MS, () => {
         Animated.parallel([
           Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }),
-          Animated.timing(rise, { toValue: 6, duration: FADE_MS, useNativeDriver: true }),
+          ...(reduceMotion ? [] : [
+            Animated.timing(rise, { toValue: 6, duration: FADE_MS, useNativeDriver: true }),
+          ]),
         ]).start();
       });
     };
@@ -89,7 +116,7 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       opacity.stopAnimation();
       rise.stopAnimation();
     };
-  }, [locale, dateKey, event, opacity, rise]);
+  }, [locale, dateKey, event, opacity, rise, reduceMotion]);
 
   return (
     <View
@@ -97,7 +124,7 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={s.dock}
+      style={[s.dock, { bottom: dockBottom }]}
     >
       {line !== null && (
         <Animated.View style={[s.bubble, { opacity, transform: [{ translateY: rise }] }]}>
@@ -110,11 +137,14 @@ export default function ChatBubble({ locale, dateKey, event }: ChatBubbleProps) 
 }
 
 const s = StyleSheet.create({
-  // The dock sits in the pet slot's reserved headroom above the duck, so the
-  // bubble grows upward into empty space and the step pill below never moves.
-  dock: { alignItems: 'center', marginBottom: spacing.lg },
+  // The dock pins the talk box to the pet slot's headroom top — the slot
+  // owner passes the offset (prototype .bubble { position: absolute;
+  // bottom: 322px }): the box grows upward into the hero's padding while its
+  // tail hangs down through the headroom, and the step pill below never
+  // moves.
+  dock: { position: 'absolute', alignSelf: 'center', alignItems: 'center' },
   // The prototype's talk box: card surface, 2px border, 14pt corners, 230pt
-  // cap, centered 13pt Lexend semibold.
+  // cap, 7/12 padding, centered 13pt Lexend semibold.
   bubble: {
     maxWidth: BUBBLE_MAX_WIDTH,
     backgroundColor: colors.card,
@@ -122,7 +152,7 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.optical7,
     alignItems: 'center',
   },
   line: {
@@ -132,11 +162,12 @@ const s = StyleSheet.create({
     fontFamily: typeFace.text.semibold,
     textAlign: 'center',
   },
-  // The rotated-square tail pokes out of the bubble's bottom edge; its card
-  // fill covers the bubble's border run behind it, leaving the open notch.
+  // The rotated-square tail pokes 7pt out of the bubble's bottom edge
+  // (prototype .bubble::after bottom: -7px); its card fill covers the
+  // bubble's border run behind it, leaving the open notch.
   tail: {
     position: 'absolute',
-    bottom: -TAIL_SIZE / 2 + 1,
+    bottom: -TAIL_SIZE / 2 - 1,
     left: '50%',
     marginLeft: -TAIL_SIZE / 2,
     width: TAIL_SIZE,

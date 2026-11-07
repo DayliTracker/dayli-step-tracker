@@ -29,26 +29,33 @@ export const colors = {
   ringTrack: '#E8DDCB', // unlit ring segments
   danger: '#8D3E34', // destructive actions
   overlayDim: '#00000047', // in-screen popup scrim (prototype .overlay rgba(0,0,0,.28))
+  popup: 'rgba(250, 243, 230, 0.98)', // stepper popup surface — canvas at .98 (prototype .editor)
 } as const;
 
-/** Corner radius scale (pt): control 14 → tab 15 → action 16 → row 17 → card 24. */
+/**
+ * Corner radius scale (pt): control 14 → tab 15 → action 16 → row 17 →
+ * popup 18 → card 24.
+ */
 export const radius = {
   control: 14, // manual-entry and language rows
   tab: 15,
-  action: 16, // header action button
+  action: 16, // header action button, stepper −/+ buttons
   row: 17, // progress and settings rows
+  popup: 18, // the stepper popup card (prototype .editor border-radius)
   card: 24, // hero cards
 } as const;
 
 /**
  * Spacing scale (pt). The approved screens use these steps only; the small
- * odd values (3, 4, 5) are optical corrections from the phase-1 visual pass.
+ * odd values (3, 4, 5, 7) are optical corrections from the phase-1 visual
+ * pass and the prototype.
  */
 export const spacing = {
   hairline: 1, // divider thickness
   xs: 3, // micro optical alignment (title, subtitle nudges)
   sm: 4, // goal block vertical rhythm
   md: 5, // muted-line gap under values
+  optical7: 7, // the talk box's vertical padding (prototype .bubble 7px 12px)
   lg: 8, // inline gaps and chip padding
   xl: 10, // card and list gaps
   xxl: 12, // section padding, date margin
@@ -65,8 +72,11 @@ export const typeSize = {
   label: 14,
   small: 15,
   body: 16,
+  alertTitle: 17, // the stepper popup's title (prototype .alert-title)
   heading: 22,
+  stepGlyph: 26, // the stepper popup's −/+ glyphs (prototype .step-btn)
   title: 27,
+  alertCount: 32, // the stepper popup's step-count readout (prototype .editor-count)
   display: 40,
 } as const;
 
@@ -93,7 +103,7 @@ export const typeVariant = { tabularNums: ['tabular-nums'] } as const;
 
 /** Line heights (pt) paired with the body and caption sizes. */
 export const typeLeading = {
-  dense: 19, // settings subtitles
+  dense: 17.6, // talk-box lines (13pt × 1.35 — prototype .bubble line-height)
   body: 20, // muted lines
   relaxed: 24, // summary and intro paragraphs
 } as const;

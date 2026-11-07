@@ -3,6 +3,7 @@ import {
   type ForwardedRef,
 } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Image,
@@ -66,6 +67,9 @@ export type PixelPetHandle = {
 
 const WALK_MS = 2600;
 const POKE_MS = 550;
+/** The poke heart's rise (prototype .particle rise: one ease-out sweep whose
+ *  opacity peaks at 25%). */
+const HEART_RISE_MS = 750;
 /** The swipe exit dash (prototype v5 leadOut: .45s ease-in). */
 export const LEAD_MS = 450;
 /** The arrival waddle (prototype v5 leadIn: .6s ease-out). */
@@ -135,7 +139,6 @@ function PixelPetInner({
   const tilt = useRef(new Animated.Value(0)).current;
   const squash = useRef(new Animated.Value(1)).current;
   const pokePunch = useRef(new Animated.Value(1)).current;
-  const heart = useRef(new Animated.Value(0)).current;
   // Sleep dims the whole duck (prototype v4 breathe-dim) and restores it on
   // wake; one driver serves both directions.
   const dim = useRef(new Animated.Value(1)).current;
@@ -275,6 +278,27 @@ function PixelPetInner({
 
   // --- motion drivers ----------------------------------------------------------
 
+  // Reduce Motion (OS setting): the duck holds its static pose — the endless
+  // loops below (idle bob, sleep breathe, celebrate hop) never start, so the
+  // resting transforms stay at 0/0/1. Presentation only: the mood machine,
+  // the frame swaps, and every bounded mood (poke, walk, hop, lead, arrive,
+  // dizzy, stroll) play exactly as before.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduceMotion(on); })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (on) => setReduceMotion(on),
+    );
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const animations: Animated.CompositeAnimation[] = [];
     const play = (a: Animated.CompositeAnimation) => {
@@ -282,45 +306,52 @@ function PixelPetInner({
       a.start();
     };
     if (mood === 'idle') {
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -5,
-              duration: 1100,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 1100,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+      // Perpetual loop — under Reduce Motion the duck holds the static idle
+      // frame (the blink/glance frame swaps above still run).
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -5,
+                duration: 1100,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 1100,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     } else if (mood === 'sleep') {
       // Sleep breathes (prototype v4): a slow, deep bob at half the idle
       // pace — the held blink frame and the dim below carry the rest.
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -3,
-              duration: 1600,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 1600,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+      // Perpetual loop — gated to the static nap pose under Reduce Motion.
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -3,
+                duration: 1600,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 1600,
+                easing: Easing.inOut(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     } else if (mood === 'dizzy') {
       // Dizzy wobbles (prototype v4): a wide, loose tilt sweep — the star
       // layer and the look frame sell the rest.
@@ -404,48 +435,52 @@ function PixelPetInner({
       );
     } else {
       // celebrate: hop + squash-and-stretch on landing; volume preserved
-      // (scaleX up while scaleY down) so the body reads as squishy, not flat
-      play(
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(bobY, {
-              toValue: -18,
-              duration: 260,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 230,
-              easing: Easing.in(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.parallel([
-              Animated.timing(squash, {
-                toValue: 1.12,
-                duration: 90,
+      // (scaleX up while scaleY down) so the body reads as squishy, not flat.
+      // Perpetual loop (it holds while the goal does) — gated to the static
+      // happy frame under Reduce Motion.
+      if (!reduceMotion) {
+        play(
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(bobY, {
+                toValue: -18,
+                duration: 260,
+                easing: Easing.out(Easing.quad),
                 useNativeDriver: true,
               }),
               Animated.timing(bobY, {
-                toValue: 3,
-                duration: 90,
+                toValue: 0,
+                duration: 230,
+                easing: Easing.in(Easing.quad),
                 useNativeDriver: true,
               }),
-            ]),
-            Animated.timing(squash, {
-              toValue: 1,
-              duration: 220,
-              easing: Easing.out(Easing.elastic(2)),
-              useNativeDriver: true,
-            }),
-            Animated.timing(bobY, {
-              toValue: 0,
-              duration: 260,
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      );
+              Animated.parallel([
+                Animated.timing(squash, {
+                  toValue: 1.12,
+                  duration: 90,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(bobY, {
+                  toValue: 3,
+                  duration: 90,
+                  useNativeDriver: true,
+                }),
+              ]),
+              Animated.timing(squash, {
+                toValue: 1,
+                duration: 220,
+                easing: Easing.out(Easing.elastic(2)),
+                useNativeDriver: true,
+              }),
+              Animated.timing(bobY, {
+                toValue: 0,
+                duration: 260,
+                useNativeDriver: true,
+              }),
+            ])
+          )
+        );
+      }
     }
     return () => {
       animations.forEach((a) => a.stop());
@@ -453,21 +488,15 @@ function PixelPetInner({
       tilt.setValue(0);
       squash.setValue(1);
     };
-  }, [mood, bobY, tilt, squash]);
+  }, [mood, reduceMotion, bobY, tilt, squash]);
 
   // --- poke, sleep, hop (the duck's own gestures, issue #43) --------------------
 
-  /** The rising heart: a poke's and a hop's shared particle burst. */
+  /** The rising heart: a poke's and a hop's shared particle burst — each
+   *  play remounts the burst (heartKey), which restarts its own driver. */
   const playHeart = useCallback(() => {
     setHeartKey((k) => k + 1);
-    heart.setValue(0);
-    Animated.timing(heart, {
-      toValue: 1,
-      duration: 750,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [heart]);
+  }, []);
 
   const handlePoke = useCallback(() => {
     // A touch that woke the sleeper already answered this press — the wake's
@@ -630,28 +659,13 @@ function PixelPetInner({
         )}
         {mood === 'sleep' && <Snores size={size} />}
         {heartKey > 0 && (
-          <Animated.Image
+          <HeartBurst
             key={heartKey}
             source={particles.heart}
-            style={[
-              styles.heart,
-              {
-                width: size * 0.2,
-                height: size * 0.2 * (6 / 7),
-                opacity: heart.interpolate({
-                  inputRange: [0, 0.25, 1],
-                  outputRange: [0, 1, 0],
-                }),
-                transform: [
-                  {
-                    translateY: heart.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-size * 0.15, -size * 0.6],
-                    }),
-                  },
-                ],
-              },
-            ]}
+            zIndex={1}
+            size={size * 0.2}
+            riseFrom={-size * 0.15}
+            riseTo={-size * 0.6}
           />
         )}
         <Animated.View
@@ -676,6 +690,58 @@ function PixelPetInner({
         </Animated.View>
       </View>
     </Pressable>
+  );
+}
+
+/** The rising poke heart — one shared burst for both ducks: the home pet
+ *  plays it on a poke and a hop (playHeart above), the mini duck on its
+ *  poke-home (App.tsx). Owns the driver (prototype .particle rise: one
+ *  ease-out sweep whose opacity peaks at 25%) and the heart render; the
+ *  caller picks the size and the rise and restarts a burst by remounting
+ *  (key). Anchors at the pet box's top edge, stacked over the pet body when
+ *  `zIndex` is set — the home pet's layer pins it above the duck frames. */
+export function HeartBurst({ source, size, riseFrom, riseTo, zIndex }: {
+  source: ImageRequireSource;
+  /** The heart's width (pt); the height keeps the asset's 6:7 frame. */
+  size: number;
+  riseFrom: number;
+  riseTo: number;
+  zIndex?: number;
+}) {
+  const rise = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(rise, {
+      toValue: 1,
+      duration: HEART_RISE_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+    return () => {
+      rise.stopAnimation();
+    };
+  }, [rise]);
+  return (
+    <Animated.Image
+      source={source}
+      style={[
+        styles.heartBurst,
+        { width: size, height: size * (6 / 7), zIndex },
+        {
+          opacity: rise.interpolate({
+            inputRange: [0, 0.25, 1],
+            outputRange: [0, 1, 0],
+          }),
+          transform: [
+            {
+              translateY: rise.interpolate({
+                inputRange: [0, 1],
+                outputRange: [riseFrom, riseTo],
+              }),
+            },
+          ],
+        },
+      ]}
+    />
   );
 }
 
@@ -827,10 +893,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '800',
   },
-  heart: {
+  heartBurst: {
     position: 'absolute',
     top: 0,
-    zIndex: 1,
   },
 });
 
