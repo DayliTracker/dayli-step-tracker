@@ -15,6 +15,9 @@ const CHATTER_VARIANCE_MS = 7000;
 /** Component sizing stays beside the component that owns it (src/tokens.ts). */
 const BUBBLE_MAX_WIDTH = 230;
 const TAIL_SIZE = 12;
+/** The bubble's vertical padding: the prototype's 7px optical step (the
+ *  spacing scale has no 7 — component-owned sizing stays beside its owner). */
+const BUBBLE_PAD_Y = 7;
 
 /** Mascot events the bubble speaks; `dizzy`/`stroll` wait for #43, `lead`/`homecome` for #42. */
 export type BubbleEventCategory =
@@ -114,7 +117,7 @@ const s = StyleSheet.create({
   // bubble grows upward into empty space and the step pill below never moves.
   dock: { alignItems: 'center', marginBottom: spacing.lg },
   // The prototype's talk box: card surface, 2px border, 14pt corners, 230pt
-  // cap, centered 13pt Lexend semibold.
+  // cap, 7/12 padding, centered 13pt Lexend semibold.
   bubble: {
     maxWidth: BUBBLE_MAX_WIDTH,
     backgroundColor: colors.card,
@@ -122,7 +125,7 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.lg,
+    paddingVertical: BUBBLE_PAD_Y,
     alignItems: 'center',
   },
   line: {
@@ -132,11 +135,12 @@ const s = StyleSheet.create({
     fontFamily: typeFace.text.semibold,
     textAlign: 'center',
   },
-  // The rotated-square tail pokes out of the bubble's bottom edge; its card
-  // fill covers the bubble's border run behind it, leaving the open notch.
+  // The rotated-square tail pokes 7pt out of the bubble's bottom edge
+  // (prototype .bubble::after bottom: -7px); its card fill covers the
+  // bubble's border run behind it, leaving the open notch.
   tail: {
     position: 'absolute',
-    bottom: -TAIL_SIZE / 2 + 1,
+    bottom: -TAIL_SIZE / 2 - 1,
     left: '50%',
     marginLeft: -TAIL_SIZE / 2,
     width: TAIL_SIZE,
