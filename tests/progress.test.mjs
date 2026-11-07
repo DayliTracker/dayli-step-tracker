@@ -112,6 +112,7 @@ test('stepper copy exists in both locales and no preview or removed-editor langu
   for (const locale of ['en', 'vi']) {
     const copy = getCopy(locale);
     assert.ok(copy.manualSave.trim());
+    assert.ok(copy.manualRemove.trim());
     assert.ok(copy.manualInputLabel.trim());
     assert.ok(copy.manualStorageError.trim());
     assert.ok(copy.stepperDecrease.trim());
@@ -119,9 +120,12 @@ test('stepper copy exists in both locales and no preview or removed-editor langu
     assert.ok(copy.miniDuckPoke.trim());
   }
   assert.notEqual(getCopy('en').manualSave, getCopy('vi').manualSave);
+  assert.notEqual(getCopy('en').manualRemove, getCopy('vi').manualRemove);
   assert.notEqual(getCopy('en').stepperDecrease, getCopy('vi').stepperDecrease);
-  // The manual editor page is gone: its page copy went with it.
-  for (const key of ['manualTitle', 'manualReplaces', 'manualRemove', 'manualSaved',
+  // The manual editor page is gone: its page copy went with it. manualRemove
+  // is not on that list any more — the stepper popup offers the removal again
+  // (phase 3's AC4), so the key is required copy above.
+  for (const key of ['manualTitle', 'manualReplaces', 'manualSaved',
     'manualRemoved', 'manualInvalid', 'addManualTotal', 'editManualTotal']) {
     assert.equal(getCopy('en')[key], undefined, `${key} left with the manual editor`);
     assert.equal(getCopy('vi')[key], undefined, `${key} left with the manual editor`);
@@ -140,10 +144,13 @@ test('Progress wires the seven local dates, the stepper affordance, and truthful
     /progressRowA11yLabel\(label, snapshot, rowGoal, locale, copy\)/,
     'each row announces its own snapshot and per-date goal, not a constant',
   );
-  assert.match(appSource, /\{ kind: 'loaded', steps: total, source: 'manual' \}/,
-    'a row with a manual total renders it as the Manual source');
-  assert.match(appSource, /\{ kind: 'unavailable' \}/,
-    'a row with no data passes the truthful unavailable snapshot');
+  // Issue #20: each row derives its snapshot through the single
+  // truthful-state rule — manual precedence first, then Health, then the
+  // explicit refreshing/failed/no-data states (src/healthkit.ts).
+  assert.match(appSource, /resolveDaySnapshot\(/,
+    'a row renders through the single truthful-state rule');
+  assert.doesNotMatch(appSource, /\{ kind: 'unavailable' \}/,
+    'no ad-hoc snapshot literal bypasses the resolver');
   assert.match(appSource, /\? formatNumber\(total, locale\) : '—'/,
     'an absent total renders the em-dash slot, not a number');
   assert.doesNotMatch(appSource, /manualPreview/, 'the preview alert is gone');

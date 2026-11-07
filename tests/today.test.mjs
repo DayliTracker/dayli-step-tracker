@@ -9,6 +9,7 @@ import {
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const todayLogicSource = readFileSync(new URL('../src/today.ts', import.meta.url), 'utf8');
+const healthSource = readFileSync(new URL('../src/healthkit.ts', import.meta.url), 'utf8');
 const engineSource = readFileSync(new URL('../components/PixelPet.tsx', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../components/pets.ts', import.meta.url), 'utf8');
 
@@ -215,8 +216,12 @@ test('Today wires the textless hero: pet, count, footprints mark, and the a11y s
     'today progress is capped at 1 before it reaches the mood machine');
   assert.match(appSource, /accessibilityElementsHidden/,
     'the pet slot must hide itself and its poke control from VoiceOver');
+  // Issue #20: Today's snapshot comes from resolveDaySnapshot (src/healthkit.ts),
+  // so every truthful state must appear either in the App wiring or in the
+  // single resolver that decides the date snapshot.
   for (const kind of ['loading', 'empty', 'unavailable', 'error', 'loaded']) {
-    assert.ok(appSource.includes(`'${kind}'`), `state ${kind} must appear in the Today presentation`);
+    assert.ok(appSource.includes(`'${kind}'`) || healthSource.includes(`'${kind}'`),
+      `state ${kind} must appear in the Today presentation (App or resolver)`);
   }
   assert.ok(appSource.includes('importantForAccessibility="no-hide-descendants"'),
     'decorative art and ring internals stay out of the screen-reader order');

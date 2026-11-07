@@ -170,9 +170,12 @@ test('the native module is read-only HealthKit over the local Expo module', () =
   assert.match(swiftSource, /requestAuthorization\(toShare: \[\], read: \[stepCount\]\)/);
   assert.match(swiftSource, /import HealthKit/);
   assert.match(swiftSource, /HKHealthStore\.isHealthDataAvailable\(\)/);
-  // No write, no query, no background API in the module surface.
+  // No write API in the module surface; the one-shot read query is the
+  // step-read card's addition (tests/health-steps.test.mjs covers its shape)
+  // and no background delivery exists.
   assert.doesNotMatch(swiftSource, /toShare: \[[^\]]/);
-  assert.doesNotMatch(swiftSource, /HKQuantityQuery|HKSampleQuery|enableBackgroundDelivery/);
+  assert.doesNotMatch(swiftSource, /enableBackgroundDelivery/);
+  assert.doesNotMatch(swiftSource, /HKSampleQuery|HKQuantityQuery\(/);
 });
 
 test('the iOS config carries a real bundle ID, the health entitlement, and the read disclosure', () => {

@@ -86,12 +86,13 @@ test('interactive controls have accessible names and at least 48-point touch tar
   // 4 shell controls (the header back actions, the settings rows, and the
   // device-language row on the language page)
   // + the seven tappable date rows (one Pressable in source) and the stepper
-  // popup's four controls (−, +, Cancel, Save) — issue #44
+  // popup's five controls (−, +, Cancel, Save, and Remove when the date holds
+  // a manual total) — issue #44, Remove in phase 3's AC4
   // + the header's mini duck
   // + the goal editor's save control.
   // + the Health page's two actions (enable, open iOS Settings) and the
   // explanation sheet's two (not now, continue) — issue #19.
-  assert.equal(pressables.length, 15);
+  assert.equal(pressables.length, 16);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);
@@ -133,6 +134,25 @@ test('the date rows open the in-screen stepper; the manual editor navigation is 
   assert.doesNotMatch(navSource, /'manual'|open-manual|manualDate/);
   assert.doesNotMatch(appSource, /litSegments|segmentAngle|RING_SEGMENTS/,
     'no ring renders anywhere (prototype v3 directive)');
+});
+
+test('the stepper removes a manual total through the store when one exists', () => {
+  // Remove exists only when the opened date holds a manual total — a manual
+  // 0 is a valid rest day that keeps precedence, so removal is never a Save
+  // of 0 and never reachable for a date with no manual total.
+  assert.match(appSource, /hasManual: existing !== null/);
+  assert.match(appSource, /\{stepper\.hasManual && \(/);
+  // The popup's Remove ends the date's manual precedence through the owner's
+  // removal API — the same confirmed-write contract as Save — and the shell
+  // wires it so the rows re-render from what is stored.
+  assert.match(appSource, /removeManualTotal\(manual\.totals, dateKey\)/);
+  assert.match(appSource, /onRemove\(stepper\.dateKey\)/);
+  assert.match(appSource, /onRemove=\{applyManualRemoval\}/);
+  // The removal affordance takes the destructive color and is offered in
+  // both locales.
+  assert.match(appSource, /stepperRemoveText: \{ color: colors\.danger/);
+  assert.equal(getCopy('en').manualRemove, 'Remove total');
+  assert.equal(getCopy('vi').manualRemove, 'Xóa tổng');
 });
 
 test('the mini duck sits in the Settings header and returns home through the back action', () => {

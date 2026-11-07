@@ -1,0 +1,2 @@
+2026-11-08 02:40:25.972 Df DayliStepTracker[22588:350ecb2] [com.apple.HealthKit:query] Executing query <HKStatisticsCollectionQuery 528217 QoS=Default> for type HKQuantityTypeIdentifierStepCount with predicate (null)
+2026-11-08 02:40:25.974 Df DayliStepTracker[22588:350eca7] [com.apple.HealthKit:query] Stopping query <HKStatisticsCollectionQuery 528217 QoS=Default state=deactivated> with error: Error Domain=com.apple.healthkit Code=5 "Authorization not determined" UserInfo={NSLocalizedDescription=Authorization not determined}

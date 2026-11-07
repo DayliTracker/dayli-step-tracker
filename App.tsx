@@ -7,8 +7,8 @@ import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert, Animated, Easing, GestureResponderEvent, Image, Linking, Modal, PanResponder, Pressable,
-  SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
+  Alert, Animated, AppState, Easing, GestureResponderEvent, Image, Linking, Modal, PanResponder,
+  Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import {
@@ -28,13 +28,14 @@ import {
 } from './src/goals';
 import { clearLocalData } from './src/clear-data';
 import {
-  loadManualTotals, saveManualTotals, setManualTotal,
+  loadManualTotals, saveManualTotals, setManualTotal, removeManualTotal,
   manualTotalForDate, MAX_MANUAL_TOTAL, DEFAULT_MANUAL_TOTALS, type ManualTotals,
 } from './src/manual-totals';
 import {
   loadHealthDecisions, saveHealthDecisions, permissionState,
-  shouldShowFirstLaunchExplanation, DEFAULT_HEALTH_DECISIONS,
-  type HealthDecisions, type HealthPermissionState,
+  shouldShowFirstLaunchExplanation, loadDailyStepTotals, resolveDaySnapshot,
+  IDLE_HEALTH_TOTALS, DEFAULT_HEALTH_DECISIONS,
+  type HealthDecisions, type HealthPermissionState, type HealthTotalsView,
 } from './src/healthkit';
 import { getDayliHealthKit } from './modules/dayli-health-kit';
 import {
@@ -136,6 +137,10 @@ export default function App() {
   // page's later request) and the last request failure, surfaced explicitly.
   const [healthAsk, setHealthAsk] = useState(false);
   const [healthRequestError, setHealthRequestError] = useState<string | null>(null);
+  // Fetched Health step totals (phase-03, issue #20): in-memory React state
+  // only — never written to AsyncStorage, so a restart finds no fetched
+  // totals (the clear-data reset below wipes them with the rest).
+  const [healthTotals, setHealthTotals] = useState<HealthTotalsView>(IDLE_HEALTH_TOTALS);
   // The shell's duck handle (issue #42): the swipe asks the duck to lead the
   // way to Settings, and a return home asks it to waddle back in.
   const petRef = useRef<PixelPetHandle | null>(null);
@@ -267,6 +272,22 @@ export default function App() {
       });
     });
   };
+  // Removing a manual total goes through the same loaded-record base and the
+  // same confirmed-write contract as saving: the store confirms, the rows
+  // re-render from what is stored, and the date's manual precedence ends —
+  // the Health total or the truthful no-data state replaces it. A failed
+  // write keeps the previous record and surfaces the reason.
+  const applyManualRemoval = (dateKey: string) => {
+    if (manual.kind !== 'ready' || manual.totals === null) return;
+    void saveManualTotals(AsyncStorage, removeManualTotal(manual.totals, dateKey))
+      .then((result) => {
+        setManual((state) => {
+          if (state.kind !== 'ready') return state;
+          if (result.kind === 'error') return { ...state, error: result.reason };
+          return { kind: 'ready', totals: result.value, error: null };
+        });
+      });
+  };
   // Confirmed clear-data resets exactly the local documents — preferences,
   // goal history, manual totals, the Health decision record, cached
   // summaries: the keys are removed, the in-memory state returns to the
@@ -283,6 +304,10 @@ export default function App() {
       setGoals({ kind: 'ready', history: DEFAULT_GOAL_HISTORY, error: null });
       setManual({ kind: 'ready', totals: DEFAULT_MANUAL_TOTALS, error: null });
       setHealth({ kind: 'ready', decisions: DEFAULT_HEALTH_DECISIONS, error: null });
+      // Fetched Health totals reset with the rest: the decision record is
+      // gone, so the in-memory totals no longer belong to a known permission
+      // path. The system Health grants stay untouched either way.
+      setHealthTotals(IDLE_HEALTH_TOTALS);
     });
   };
   // The destructive action sits behind an explicit confirm button (destructive
@@ -334,12 +359,54 @@ export default function App() {
       setHealthAsk(false);
     });
   };
+  // One step refresh (phase-03, issue #20): granted access only, through the
+  // typed adapter (src/healthkit.ts loadDailyStepTotals). A failure keeps the
+  // previous totals and surfaces the error — never a zero-step success; a
+  // success stamps the last-refresh time. Nothing here runs in the
+  // background: the caller is always app open, foreground, or pull to
+  // refresh. An in-flight refresh absorbs duplicate triggers.
+  const refreshBusy = useRef(false);
+  const refreshHealthTotals = useCallback(() => {
+    if (healthNative === null || refreshBusy.current) return;
+    if (healthPerm !== 'granted') return;
+    refreshBusy.current = true;
+    setHealthTotals((prev) => ({ ...prev, refreshing: true }));
+    void loadDailyStepTotals(healthNative, new Date())
+      .then((result) => {
+        setHealthTotals((prev) => result.kind === 'ok'
+          ? { totals: result.totals, lastRefreshMs: Date.now(), refreshing: false, error: null }
+          : {
+              totals: prev.totals, lastRefreshMs: prev.lastRefreshMs,
+              refreshing: false, error: result.reason,
+            });
+      })
+      .finally(() => { refreshBusy.current = false; });
+  }, [healthNative, healthPerm]);
+  // Refresh on app open (first render with granted access) and on every
+  // return to the foreground (AppState 'active'). The listener is removed on
+  // cleanup and nothing is scheduled while backgrounded — no background
+  // refresh is scheduled or implied.
+  useEffect(() => {
+    if (healthPerm !== 'granted' || healthNative === null) return;
+    refreshHealthTotals();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshHealthTotals();
+    });
+    return () => subscription.remove();
+  }, [healthPerm, healthNative, refreshHealthTotals]);
   let page: ReactElement;
 
   if (nav.screen === 'today') {
     page = (
-      <ScrollView contentContainerStyle={s.hero}>
-        <Today locale={locale} manual={manual}
+      // Pull to refresh (phase-03, issue #20): the only refresh control in
+      // the app, and the only paths to refreshHealthTotals are app open,
+      // foreground, and this pull — never a timer or a background task.
+      <ScrollView contentContainerStyle={s.hero}
+        refreshControl={
+          <RefreshControl refreshing={healthTotals.refreshing}
+            onRefresh={refreshHealthTotals} tintColor={colors.text} />
+        }>
+        <Today locale={locale} manual={manual} health={healthTotals} healthPerm={healthPerm}
           goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL}
           onOpenSettings={openSettingsFromHome} petRef={petRef} />
       </ScrollView>
@@ -347,7 +414,9 @@ export default function App() {
   } else if (nav.screen === 'settings') {
     page = <SettingsPage locale={locale} onNavigate={send} onClear={confirmClear}
       clearError={clearError} goalSubtitle={goalSubtitle}
-      goalHistory={goalHistory} manual={manual} onApply={applyManualTotal} />;
+      goalHistory={goalHistory} manual={manual} onApply={applyManualTotal}
+      onRemove={applyManualRemoval}
+      healthTotals={healthTotals} healthPerm={healthPerm} />;
   } else {
     page = (
       <DestinationPage destination={nav.screen} locale={locale} onNavigate={send}
@@ -358,6 +427,7 @@ export default function App() {
         goalStorageError={goalsError} onGoal={applyGoal}
         healthState={healthPerm} healthReadError={health.kind === 'ready' ? health.error : null}
         healthRequestError={healthRequestError}
+        healthTotals={healthTotals}
         onHealthRequest={() => setHealthAsk(true)} />
     );
   }
@@ -446,23 +516,27 @@ function Header({ title, icon, action, label, onPress, side }: {
  * every one of them composes with the swipe: a busy duck ignores new moods,
  * and no mood ever delays the screen change.
  */
-function Today({ locale, goal, manual, onOpenSettings, petRef }: {
-  locale: Locale; goal: number; manual: ManualState;
+function Today({ locale, goal, manual, health, healthPerm, onOpenSettings, petRef }: {
+  locale: Locale; goal: number; manual: ManualState; health: HealthTotalsView;
+  healthPerm: HealthPermissionState | null;
   onOpenSettings: () => void; petRef: RefObject<PixelPetHandle | null>;
 }) {
   const copy = getCopy(locale);
   // Today renders from the local data owner: loading while the record reads,
-  // error when the read failed, the date's saved manual total when it has one
-  // (manual is the only source until phase 3 connects Health), and empty when
-  // it has none. Nothing is fabricated; the goal is the saved per-date value.
+  // error when the read failed, the date's saved manual total when it has
+  // one, then the last Health read for today, then the explicit transient
+  // and failure states (resolveDaySnapshot, src/healthkit.ts). Nothing is
+  // fabricated; the goal is the saved per-date value.
   const todayKey = localDateKey(new Date());
   const total = manual.kind === 'ready' && manual.totals !== null
     ? manualTotalForDate(manual.totals, todayKey)
     : null;
-  const snapshot: TodaySnapshot = manual.kind !== 'ready' ? { kind: 'loading' }
-    : manual.totals === null ? { kind: 'error' }
-    : total !== null ? { kind: 'loaded', steps: total, source: 'manual' }
-    : { kind: 'empty' };
+  const snapshot: TodaySnapshot = resolveDaySnapshot(
+    manual.kind !== 'ready' ? { kind: 'loading' }
+      : manual.totals === null ? { kind: 'failed' }
+      : { kind: 'value', total },
+    health, healthPerm, todayKey,
+  );
   const loaded = snapshot.kind === 'loaded' ? snapshot : null;
   // Progress drives the pet's mood machine: idle at rest, a walk burst on
   // rising steps, celebrate at the goal — and back to idle when a new day
@@ -630,8 +704,9 @@ function Today({ locale, goal, manual, onOpenSettings, petRef }: {
  * screen-reader sentence keeps the per-date goal and source, so the visible
  * minimalism never loses information for VoiceOver.
  */
-function Progress({ locale, goalHistory, manual, onOpenStepper }: {
+function Progress({ locale, goalHistory, manual, health, healthPerm, onOpenStepper }: {
   locale: Locale; goalHistory: GoalHistory | null; manual: ManualState;
+  health: HealthTotalsView; healthPerm: HealthPermissionState | null;
   onOpenStepper: (dateKey: string) => void;
 }) {
   const copy = getCopy(locale);
@@ -642,18 +717,22 @@ function Progress({ locale, goalHistory, manual, onOpenStepper }: {
       {dates.map((date, index) => {
         const label = index ? formatRowDate(date, locale) : copy.dateToday;
         const dateKey = localDateKey(date);
-        // Each row renders from the local data owner: the date's saved
-        // manual total or the truthful no-data state — Health totals arrive
-        // in phase 3. Each row's goal is that date's own: a goal change
-        // never rewrites history. Tapping the row opens the stepper for
-        // that exact date.
+        // Each row renders from the local data owner through the same
+        // truthful-state rule as Today (resolveDaySnapshot): the date's
+        // manual total first, then the last Health read, then the explicit
+        // refreshing/failed/no-data states. Each row's goal is that date's
+        // own: a goal change never rewrites history. Tapping the row opens
+        // the stepper for that exact date.
         const rowGoal = goalHistory ? goalForDate(goalHistory, dateKey) : DEFAULT_GOAL;
         const total = manual.kind === 'ready' && manual.totals !== null
           ? manualTotalForDate(manual.totals, dateKey)
           : null;
-        const snapshot: TodaySnapshot = total !== null
-          ? { kind: 'loaded', steps: total, source: 'manual' }
-          : { kind: 'unavailable' };
+        const snapshot: TodaySnapshot = resolveDaySnapshot(
+          manual.kind !== 'ready' ? { kind: 'loading' }
+            : manual.totals === null ? { kind: 'failed' }
+            : { kind: 'value', total },
+          health, healthPerm, dateKey,
+        );
         return (
           // The row itself is the control (prototype v3's role="button" row):
           // date + total only, the full sentence in the accessibility label.
@@ -685,13 +764,16 @@ function Progress({ locale, goalHistory, manual, onOpenStepper }: {
  * beside the back action in the header, and Progress' seven tappable date
  * rows. The stepper popup (prototype v3) is in-screen state — it writes the
  * manual-totals owner on Save (the row and home, for today, re-render from
- * the same store), never navigates, and Cancel throws the draft away.
+ * the same store), removes the date's manual total through the same owner
+ * when it holds one, never navigates, and Cancel throws the draft away.
  */
-function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply }: {
+function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, goalHistory, manual, onApply, onRemove, healthTotals, healthPerm }: {
   locale: Locale; onNavigate: (action: NavigationAction) => void;
   onClear: () => void; clearError: string | null; goalSubtitle: string;
   goalHistory: GoalHistory | null; manual: ManualState;
   onApply: (dateKey: string, value: number) => void;
+  onRemove: (dateKey: string) => void;
+  healthTotals: HealthTotalsView; healthPerm: HealthPermissionState | null;
 }) {
   const copy = getCopy(locale);
   // Home is the only root (prototype v2): Settings always returns there.
@@ -699,14 +781,18 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   // The mini duck (prototype v5) sits beside the back action; poking it
   // plays the surprised + heart and follows it home — the arrival waddle is
   // the back navigation's own (#42's arrive()).
-  const [stepper, setStepper] = useState<{ dateKey: string; value: number } | null>(null);
+  const [stepper, setStepper] = useState<{
+    dateKey: string; value: number; hasManual: boolean;
+  } | null>(null);
   const openStepper = (dateKey: string) => {
     // The draft starts from the date's saved total, or 0 for a date with no
-    // data — never from a fabricated number.
+    // data — never from a fabricated number. Whether the date holds a manual
+    // total is captured here too: Remove exists only where there is something
+    // to remove.
     const existing = manual.kind === 'ready' && manual.totals !== null
       ? manualTotalForDate(manual.totals, dateKey)
       : null;
-    setStepper({ dateKey, value: existing ?? 0 });
+    setStepper({ dateKey, value: existing ?? 0, hasManual: existing !== null });
   };
   // −/+ at 100 per tap (prototype v3) inside the data owner's documented
   // bounds — 0 floor, and the store's 100,000 ceiling, so a saved value is
@@ -720,6 +806,14 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   const saveStepper = () => {
     if (stepper === null) return;
     onApply(stepper.dateKey, stepper.value);
+    setStepper(null);
+  };
+  // Remove ends the date's manual precedence through the store owner — the
+  // same confirmed-write contract as Save: until the record confirms, the
+  // rows keep the previous totals, and a failed write surfaces the reason.
+  const removeStepper = () => {
+    if (stepper === null) return;
+    onRemove(stepper.dateKey);
     setStepper(null);
   };
   // The popup's date label matches the row that opened it.
@@ -774,7 +868,7 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
             rows ride the same scroll, so home stays the only root screen. */}
         <View style={s.divider} />
         <Progress locale={locale} goalHistory={goalHistory} manual={manual}
-          onOpenStepper={openStepper} />
+          health={healthTotals} healthPerm={healthPerm} onOpenStepper={openStepper} />
         <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
       </ScrollView>
       {/* The stepper popup (prototype v3): an in-screen overlay, not a
@@ -805,12 +899,20 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
               </Pressable>
             </View>
             {/* Prototype .alert-actions: borderless text buttons spread with
-                space-around — the accentText green IS Save's confirm weight. */}
+                space-around — the accentText green IS Save's confirm weight,
+                and Remove takes the destructive color: it ends the date's
+                manual precedence and only exists when a manual total does. */}
             <View style={s.stepperActions}>
               <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
                 onPress={() => setStepper(null)} style={s.stepperAction}>
                 <Text style={s.stepperActionText}>{copy.cancel}</Text>
               </Pressable>
+              {stepper.hasManual && (
+                <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
+                  onPress={removeStepper} style={s.stepperAction}>
+                  <Text style={s.stepperRemoveText}>{copy.manualRemove}</Text>
+                </Pressable>
+              )}
               <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
                 onPress={saveStepper} style={s.stepperAction}>
                 <Text style={s.stepperActionText}>{copy.manualSave}</Text>
@@ -823,14 +925,15 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
   );
 }
 
-function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, currentGoal, canSaveGoal, goalStorageError, onGoal, healthState, healthReadError, healthRequestError, onHealthRequest }: {
+function DestinationPage({ destination, locale, onNavigate, languageOverride, storageError, onLanguage, currentGoal, canSaveGoal, goalStorageError, onGoal, healthState, healthReadError, healthRequestError, healthTotals, onHealthRequest }: {
   destination: SettingsDestination; locale: Locale; onNavigate: (action: NavigationAction) => void;
   languageOverride: Locale | null; storageError: string | null;
   onLanguage: (override: Locale | null) => void;
   currentGoal: number; canSaveGoal: boolean; goalStorageError: string | null;
   onGoal: (value: number) => void;
   healthState: HealthPermissionState | null; healthReadError: string | null;
-  healthRequestError: string | null; onHealthRequest: () => void;
+  healthRequestError: string | null; healthTotals: HealthTotalsView;
+  onHealthRequest: () => void;
 }) {
   const copy = getCopy(locale);
   const title = { goal: copy.goalTitle, language: copy.languageTitle, health: copy.healthTitle }[destination];
@@ -847,7 +950,8 @@ function DestinationPage({ destination, locale, onNavigate, languageOverride, st
         )}
         {destination === 'health' && (
           <HealthPage locale={locale} state={healthState} readError={healthReadError}
-            requestError={healthRequestError} onRequest={onHealthRequest} />
+            requestError={healthRequestError} healthTotals={healthTotals}
+            onRequest={onHealthRequest} />
         )}
         {destination === 'language' && (
           <View style={s.list}>
@@ -923,16 +1027,19 @@ function GoalEditor({ locale, currentGoal, canSave, storageError, onApply }: {
 }
 
 /**
- * The Health access page (phase-03, issue #19): the typed permission state in
- * the user's language, a later request behind the same explanation sheet
- * (never an unexplained prompt), and — for the connected state — the system
- * route Apple gives users to change their choice. Read and request failures
- * surface as error lines, never as a success-shaped fallback. Manual entry is
- * never gated on this page's state.
+ * The Health access page (phase-03, issues #19 and #20): the typed
+ * permission state in the user's language, a later request behind the same
+ * explanation sheet (never an unexplained prompt), and — for the connected
+ * state — the last successful refresh time and the system route Apple gives
+ * users to change their choice. The refresh time is the user's own local
+ * date and time, so it can never imply a background refresh happened. Read,
+ * request, and refresh failures surface as error lines, never as a
+ * success-shaped fallback. Manual entry is never gated on this page's state.
  */
-function HealthPage({ locale, state, readError, requestError, onRequest }: {
+function HealthPage({ locale, state, readError, requestError, healthTotals, onRequest }: {
   locale: Locale; state: HealthPermissionState | null; readError: string | null;
-  requestError: string | null; onRequest: () => void;
+  requestError: string | null; healthTotals: HealthTotalsView;
+  onRequest: () => void;
 }) {
   const copy = getCopy(locale);
   const stateLine = state === null ? null
@@ -943,9 +1050,20 @@ function HealthPage({ locale, state, readError, requestError, onRequest }: {
       'unavailable': copy.healthPermUnavailable,
     }[state];
   const canRequest = state === 'not-requested' || state === 'skipped-declined';
+  // The last successful refresh, in the device's own date and time — an
+  // unambiguous local presentation (phase-03 design 6). A null means no
+  // refresh has succeeded yet this session: the line stays off rather than
+  // guessing a time.
+  const lastRefreshLine = state === 'granted' && healthTotals.lastRefreshMs !== null
+    ? `${copy.lastRefreshLabel}: ${new Date(healthTotals.lastRefreshMs).toLocaleString(
+      locale === 'vi' ? 'vi-VN' : 'en-US',
+      { dateStyle: 'medium', timeStyle: 'short' },
+    )}`
+    : null;
   return (
     <View style={s.healthPage}>
       {stateLine && <Text style={s.summary}>{stateLine}</Text>}
+      {lastRefreshLine && <Text style={s.muted}>{lastRefreshLine}</Text>}
       {canRequest && (
         <Pressable accessibilityRole="button" accessibilityLabel={copy.healthEnableAction}
           onPress={onRequest} style={[s.goalSave, s.healthStack]}>
@@ -961,6 +1079,10 @@ function HealthPage({ locale, state, readError, requestError, onRequest }: {
       )}
       {readError && <Text style={s.languageError}>{copy.healthDecisionsError}</Text>}
       {requestError && <Text style={s.languageError}>{copy.healthRequestError}</Text>}
+      {healthTotals.refreshing && <Text style={s.muted}>{copy.healthRefreshing}</Text>}
+      {healthTotals.error !== null && (
+        <Text style={s.languageError}>{copy.healthRefreshFailed}</Text>
+      )}
     </View>
   );
 }
@@ -1217,6 +1339,8 @@ const s = StyleSheet.create({
   stepperAction: { minHeight: 48, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xxl },
   stepperActionText: { color: colors.accentText, fontSize: typeSize.small,
+    fontFamily: typeFace.text.bold },
+  stepperRemoveText: { color: colors.danger, fontSize: typeSize.small,
     fontFamily: typeFace.text.bold },
   divider: { height: spacing.hairline, alignSelf: 'stretch', backgroundColor: colors.border,
     marginTop: spacing.section, marginBottom: spacing.section },
