@@ -1,0 +1,8 @@
+# Builder round 2 evidence · motion-lineage rebuild @ e788451
+
+- `node scripts/mascots/smooth-engine.mjs scripts/mascots/packs/smooth-duck.mjs --out assets/mascots/smooth-duck` — 17 files; validator PASS — 0 problems (cycles schema, files, manifest v2, alpha-in-silhouette, registration incl. cycle wrap, byte-for-byte determinism).
+- Byte-compare vs a fresh `DayliTracker/mascots@origin/main` render (temp worktree at ca2f3a2, pinned rasterizer 2.6.2): all 15 engine PNGs + manifest.json + contact_sheet.png IDENTICAL. particle_heart/star differ by design — the app's smooth particles stay the prototype-rendered librsvg sprites (assets/mascots/smooth-duck/svg/), as since v1.
+- Pixel fallback: `engine.mjs` upgraded to mascots main (206c0d6 CLI fix); re-render byte-compares IDENTICAL to the committed pixel-duck assets; `validate-frames.mjs --out assets/mascots/pixel-duck` PASS — 0 problems.
+- `npm run typecheck` exit 0 · `npm test` 158/158 (4 source-pin tests updated for the new wiring: mascot require-free pin, pressables 17, mood-machine-first pin preserved, cycles prop pin).
+- App run: Debug build via `npx expo run:ios` on iPhone 18 Pro (iOS 27.0) — Build Succeeded, launched; 01-home-new-art-debug.png shows the post-#15 art rendering in-app. The "Open debugger" strip is the Debug build's LogBox, not app UI.
+- Per-state captures NOT re-taken this round: the idb HID backend was unavailable ("dtuhidd connection invalidated", no GUI Simulator for input injection). The committed `docs/mascots/duck/qa/state-*.png` are v1-art captures pending re-capture in QA v2 (qa/README.md records this).

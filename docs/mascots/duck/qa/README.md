@@ -31,6 +31,15 @@ record. `tests/mascot-qa.test.mjs` pins the captured set.
 Captured: `state-idle`, `state-walk`, `state-celebrate`, `state-poke`,
 `state-sleep`, `state-hop`, `state-stroll`.
 
+> **Stale on the motion-lineage rebuild (2026-11-11, mascots@0459293):** the
+> committed `state-*.png` captures show the v1 (Gate-1) art. The rebuild
+> re-vendored the post-#15 replacement art + manifest v2; re-capture on the
+> new art is pending QA v2. The idb HID backend was unavailable during the
+> rebuild ("dtuhidd connection invalidated"; no GUI Simulator for input
+> injection), so moods could not be re-driven — recorded here rather than
+> faked. The rebuild's own app-run evidence (new art rendering in-app) is
+> under `docs/super-board/runs/issue-2-build-v2/`.
+
 **Not captured — dizzy.** The wiggle verdict needs a multi-reversal drag on
 the duck (`isWiggle`: ≥2 direction flips, whole excursion ≤140px,
 `src/moods.ts`); the automation backends here (idb taps/swipes, single-stroke
