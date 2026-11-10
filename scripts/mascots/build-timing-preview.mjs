@@ -27,6 +27,17 @@ const dataUrls = Object.fromEntries(frames.map((frame) => {
   return [frame, `data:image/png;base64,${png.toString('base64')}`];
 }));
 
+// Manifest v2 walk cycle (mascots#19/#20): the walk moods play the cycle's
+// rendered in-betweens at the manifest fps — fps and order read from the
+// shipped manifest, never re-declared here.
+const manifest = JSON.parse(readFileSync(join(packDir, 'manifest.json'), 'utf8'));
+const walkCycle = manifest.cycles.walk;
+const cycleDataUrls = walkCycle.frames.map((entry) => {
+  const png = readFileSync(join(packDir, entry.file));
+  return `data:image/png;base64,${png.toString('base64')}`;
+});
+const cycleStepMs = Math.round(1000 / walkCycle.fps);
+
 // Timings copied verbatim from components/PixelPet.tsx and src/moods.ts.
 const T = {
   idleBobMs: 1100,        // bob −5px up, then down
@@ -35,7 +46,10 @@ const T = {
   blinkHoldMs: 150,
   lookFirstMs: 6000,      // + Math.random()*4000; holds 700ms
   lookHoldMs: 700,
-  walkSwapMs: 180,        // walkA/walkB swap; bob −7px 200/180ms; tilt ±4° 190ms
+  walkCycleFps: walkCycle.fps,   // manifest v2 walk cycle (smooth pack)
+  walkCycleStepMs: cycleStepMs,  // 1000 / fps per in-between frame
+  walkCycleFrames: cycleDataUrls.length,
+  walkSwapMs: 180,        // v1 packs only: walkA/walkB swap (the pixel duck)
   walkBobUpMs: 200,
   walkBobDownMs: 180,
   walkTiltMs: 190,
@@ -61,8 +75,8 @@ const T = {
 };
 
 const stateRows = Object.entries({
-  idle: `bob ${T.idleBobPx}px, ${T.idleBobMs}ms up / ${T.idleBobMs}ms down loop · blink after ${T.blinkFirstMs}–${T.blinkFirstMs + 2200}ms (${T.blinkHoldMs}ms hold) · look after ${T.lookFirstMs}–${T.lookFirstMs + 4000}ms (${T.lookHoldMs}ms hold)`,
-  walk: `walk_a/walk_b swap ${T.walkSwapMs}ms · bob −7px ${T.walkBobUpMs}/${T.walkBobDownMs}ms · tilt ±4° ${T.walkTiltMs}ms · burst ${T.walkBurstMs}ms`,
+  idle: `bob ${T.idleBobPx}px, ${T.idleBobMs}ms up / ${T.idleBobMs}ms down loop · blink after ${T.blinkFirstMs}–${T.blinkFirstMs + 2200}ms (${T.blinkHoldMs}ms hold) · look after ${T.lookFirstMs}–${T.lookFirstMs + 4000}ms (${T.lookHoldMs}ms hold) · breath scaleY 0.995–1.015 over ${2200}ms · sway ±0.6° over ${3400}ms · weight shift every 4–7s (idle only)`,
+  walk: `manifest v2 cycle: ${T.walkCycleFrames} tween in-betweens @ ${T.walkCycleFps} fps (${T.walkCycleStepMs}ms/frame) · bob −7px ${T.walkBobUpMs}/${T.walkBobDownMs}ms · tilt ±4° ${T.walkTiltMs}ms · burst ${T.walkBurstMs}ms`,
   celebrate: `hop −18px ${T.celebrateHopMs}ms, land ${T.celebrateDownMs}ms · squash 1.12 ${T.celebrateSquashMs}ms, elastic release ${T.celebrateReleaseMs}ms · settle ${T.celebrateSettleMs}ms`,
   poke: `surprised frame ${T.pokeMs}ms · heart rises ${T.heartMs}ms`,
   sleep: `blink frame held · breathe −${T.sleepBobPx}px ${T.sleepBobMs}ms · dim 0.72 over ${T.sleepDimMs}ms · self-wake ${T.sleepWakeMs}ms`,
@@ -99,7 +113,7 @@ const html = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>Smooth duck · Gate 2 timing preview <small>· mascots#2 · frames: the shipped pack @ mascots 516a5b7</small></h1>
+  <h1>Smooth duck · Gate 2 timing preview <small>· mascots#2 · frames: the shipped pack @ mascots 0459293 (tween cycles + manifest v2)</small></h1>
   <p>Every mood plays at the exact timings <code>components/PixelPet.tsx</code> and
   <code>src/moods.ts</code> run. Click a state; idle returns on its own where the app
   settles it back (walk ${T.walkBurstMs}ms, dizzy ${T.dizzyMs}ms, hop ${T.hopMs}ms).</p>
@@ -116,6 +130,7 @@ const html = `<!doctype html>
 </main>
 <script>
 const FRAMES = ${JSON.stringify(dataUrls)};
+const CYCLE = ${JSON.stringify(cycleDataUrls)};
 const T = ${JSON.stringify(T)};
 const frameImg = document.getElementById('frame');
 const controls = document.getElementById('controls');
@@ -138,9 +153,17 @@ function play(name) {
     timers.push(setTimeout(function blinkLoop() { blink(); timers.push(setTimeout(blinkLoop, T.blinkFirstMs + Math.random() * 2200)); }, T.blinkFirstMs));
     timers.push(setTimeout(function lookLoop() { look(); timers.push(setTimeout(lookLoop, T.lookFirstMs + Math.random() * 4000)); }, T.lookFirstMs));
   } else if (name === 'walk' || name === 'lead' || name === 'arrive' || name === 'stroll') {
-    let walkA = true;
-    show('walk_a');
-    timers.push(setInterval(() => { walkA = !walkA; show(walkA ? 'walk_a' : 'walk_b'); }, T.walkSwapMs));
+    if (CYCLE.length > 0) {
+      // manifest v2 (smooth pack): the walk cycle at the manifest fps
+      let i = 0;
+      show(CYCLE[0]);
+      timers.push(setInterval(() => { i = (i + 1) % CYCLE.length; show(CYCLE[i]); }, T.walkCycleStepMs));
+    } else {
+      // v1 pack (the pixel duck): the two-frame swap
+      let walkA = true;
+      show('walk_a');
+      timers.push(setInterval(() => { walkA = !walkA; show(walkA ? 'walk_a' : 'walk_b'); }, T.walkSwapMs));
+    }
     animate(frameImg, [
       { transform: 'translateY(0px)' }, { transform: 'translateY(-7px)' }, { transform: 'translateY(0px)' },
     ], { duration: T.walkBobUpMs + T.walkBobDownMs, iterations: Infinity, easing: 'ease-out' });

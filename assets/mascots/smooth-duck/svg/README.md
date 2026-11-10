@@ -4,8 +4,9 @@ Committed vector sources for the two PNG sprites the smooth duck ships:
 `particle_star.png` and `particle_heart.png` in this directory. The duck
 FRAMES no longer come from here (mascots#2): they are rendered by the
 vendored smooth engine from `scripts/mascots/packs/smooth-duck.mjs` — the
-Gate-1-polished pack vendored byte-exact from `DayliTracker/mascots@516a5b7`
-(ADR 0001, mascots#3's cute-enough verdict). The engine pack carries no
+prototype-matched pack vendored byte-exact from
+`DayliTracker/mascots@0459293` (the post-#15 replacement art + the tween
+cycles and manifest v2 lineage). The engine pack carries no
 particle art, so these two sprites stay SVG-sourced.
 
 ## Provenance

@@ -1,9 +1,11 @@
-import type { PixelPetFrames, PixelPetParticles } from './PixelPet';
+import type { PixelPetCycles, PixelPetFrames, PixelPetParticles } from './PixelPet';
 
 export type Pet = {
   id: string;
   frames: PixelPetFrames;
   particles: PixelPetParticles;
+  /** Manifest v2 cycle playback (mascots#19/#20); a v1 pack omits it. */
+  cycles?: PixelPetCycles;
 };
 
 // require() paths must be literal strings — Metro resolves assets statically.
@@ -11,10 +13,11 @@ export type Pet = {
 // the prototype-rendered smooth star/heart, the pixel duck the engine's
 // pixel-map sprites, so a switch never mixes art styles.
 
-// The smooth duck (mascots#2) — the Gate-1-polished pack rendered by the
+// The smooth duck (mascots#2) — the prototype-matched pack rendered by the
 // vendored smooth engine (scripts/mascots/smooth-engine.mjs, pinned
 // @resvg/resvg-js 2.6.2) from scripts/mascots/packs/smooth-duck.mjs, vendored
-// byte-exact from DayliTracker/mascots@516a5b7. Regenerate:
+// byte-exact from DayliTracker/mascots@0459293 (the tween-cycles + manifest
+// v2 lineage). Regenerate:
 //   node scripts/mascots/smooth-engine.mjs scripts/mascots/packs/smooth-duck.mjs --out assets/mascots/smooth-duck
 const smoothDuckFrames: PixelPetFrames = {
   idle: require('../assets/mascots/smooth-duck/smooth-duck_idle.png'),
@@ -29,6 +32,25 @@ const smoothDuckFrames: PixelPetFrames = {
 const smoothDuckParticles: PixelPetParticles = {
   star: require('../assets/mascots/smooth-duck/particle_star.png'),
   heart: require('../assets/mascots/smooth-duck/particle_heart.png'),
+};
+
+// Manifest v2 walk cycle (mascots#19): 8 tween in-betweens (2 keys × 4
+// steps) looping at the manifest fps — PixelPet plays them in the walk
+// moods; the file order IS the playback order.
+const smoothDuckCycles: PixelPetCycles = {
+  walk: {
+    fps: 10,
+    frames: [
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_000.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_001.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_002.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_003.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_004.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_005.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_006.png'),
+      require('../assets/mascots/smooth-duck/smooth-duck_walk_007.png'),
+    ],
+  },
 };
 
 // The pixel duck — the original PixelPet pack, kept selectable as the
@@ -61,6 +83,7 @@ export const PETS: Pet[] = [
     id: 'smooth-duck',
     frames: smoothDuckFrames,
     particles: smoothDuckParticles,
+    cycles: smoothDuckCycles,
   },
   {
     id: 'pixel-duck',

@@ -2,11 +2,14 @@
 
 The app's mascot QA directory (mascots#2's Gate 3). Two packs ship:
 
-- **Smooth duck** — the shipped default. The Gate-1-polished pack vendored
-  byte-exact from `DayliTracker/mascots@516a5b7`
-  (`scripts/mascots/packs/smooth-duck.mjs`), rendered by the vendored smooth
+- **Smooth duck** — the shipped default. The prototype-matched pack vendored
+  byte-exact from `DayliTracker/mascots@0459293` (the post-#15 replacement
+  art + the tween-cycles/manifest-v2 lineage,
+  `scripts/mascots/packs/smooth-duck.mjs`), rendered by the vendored smooth
   engine (`scripts/mascots/smooth-engine.mjs`, pinned `@resvg/resvg-js`
-  2.6.2) into `assets/mascots/smooth-duck/`. The engine's `manifest.json` and
+  2.6.2) into `assets/mascots/smooth-duck/` — now manifest **v2**: the walk
+  cycle ships 8 tween in-betweens the component plays at the manifest fps
+  (mascots#19/#20). The engine's `manifest.json` and
   `contact_sheet.png` are the pack's evidence; the validator
   (`scripts/mascots/validate-smooth-frames.mjs`) gates the delivery
   (files · manifest · dimensions · alpha-in-silhouette · registration ·

@@ -86,7 +86,7 @@ test('interactive controls have accessible names and at least 48-point touch tar
   // 4 shell controls (the header back actions, the settings rows, and the
   // device-language row on the language page)
   // + the seven tappable date rows (one Pressable in source) and the stepper
-  // popup's five controls (−, +, Cancel, Save, and Remove when the date holds
+  // popup's six controls (−, +, Cancel, Save, and Remove when the date holds
   // a manual total) — issue #44, Remove in phase 3's AC4
   // + the header's mini duck
   // + the goal editor's save control.
@@ -94,7 +94,7 @@ test('interactive controls have accessible names and at least 48-point touch tar
   // explanation sheet's two (not now, continue) — issue #19.
   // + the mascot switcher (mascots#2): one mapped radio Pressable for the
   //   pet rows (the Settings row rides the existing rows map).
-  assert.equal(pressables.length, 16);
+  assert.equal(pressables.length, 17);
   for (const pressable of pressables) {
     assert.match(pressable, /accessibilityRole=/);
     assert.match(pressable, /accessibilityLabel=/);

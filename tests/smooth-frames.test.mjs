@@ -6,16 +6,18 @@ import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import test from 'node:test';
 
-// The smooth-art duck pack (mascots#2): the Gate-1-polished pack vendored
-// byte-exact from DayliTracker/mascots@516a5b7
-// (scripts/mascots/packs/smooth-duck.mjs), rendered by the vendored smooth
-// engine (scripts/mascots/smooth-engine.mjs) through the exact-pinned
-// build-time rasterizer @resvg/resvg-js 2.6.2 into
+// The smooth-art duck pack (mascots#2): the prototype-matched pack vendored
+// byte-exact from DayliTracker/mascots@0459293 (the tween-cycles + manifest
+// v2 lineage — scripts/mascots/packs/smooth-duck.mjs), rendered by the
+// vendored smooth engine (scripts/mascots/smooth-engine.mjs) through the
+// exact-pinned build-time rasterizer @resvg/resvg-js 2.6.2 into
 // assets/mascots/smooth-duck/. These tests pin the pack contract: filenames
-// the app requires, the 512px engine canvas, corner alpha (the contract the
-// retired qlmanage rasterizer broke on the #45 pack), the engine manifest,
-// the validator PASS — the ticket's AC2 — and the librsvg-rendered
-// particles, which still come from committed SVG sources.
+// the app requires (the seven frames AND the walk cycle's eight tween
+// in-betweens the component plays, mascots#19/#20), the 512px engine canvas,
+// corner alpha (the contract the retired qlmanage rasterizer broke on the
+// #45 pack), the engine manifest v2, the validator PASS — the ticket's AC2 —
+// and the librsvg-rendered particles, which still come from committed SVG
+// sources.
 const PACK_DIR = new URL('../assets/mascots/smooth-duck/', import.meta.url);
 const SVG_DIR = new URL('svg/', PACK_DIR);
 const PETS_SOURCE = readFileSync(new URL('../components/pets.ts', import.meta.url), 'utf8');
@@ -25,8 +27,13 @@ const FRAMES = [
   'smooth-duck_walk_a', 'smooth-duck_walk_b', 'smooth-duck_happy',
   'smooth-duck_surprised',
 ];
+const CYCLES = [
+  'smooth-duck_walk_000', 'smooth-duck_walk_001', 'smooth-duck_walk_002',
+  'smooth-duck_walk_003', 'smooth-duck_walk_004', 'smooth-duck_walk_005',
+  'smooth-duck_walk_006', 'smooth-duck_walk_007',
+];
 const PARTICLES = ['particle_heart', 'particle_star'];
-const PACK = [...FRAMES, ...PARTICLES];
+const PACK = [...FRAMES, ...CYCLES, ...PARTICLES];
 const CANVAS = 512;        // the engine pack's square frame canvas
 const PARTICLE_SIZE = 480; // the SVG-rendered sprites stay at the old pin
 const RESVG_VERSION = '2.6.2';
@@ -179,6 +186,22 @@ test('the engine manifest names the pack, the canvas, every frame in pack order,
     'the manifest must pin the rasterizer version');
 });
 
+test('the manifest is v2: the walk cycle ships at its manifest fps in engine order', () => {
+  const manifest = JSON.parse(readFileSync(join(PACK_DIR.pathname, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.version, 2, 'the manifest must be v2 (the pack declares cycles)');
+  assert.ok(manifest.cycles, 'the manifest must carry the cycles block');
+  const walk = manifest.cycles.walk;
+  assert.equal(walk.fps, 10, 'the walk cycle plays at the manifest fps 10');
+  assert.equal(walk.loop, true, 'the walk cycle loops');
+  assert.equal(walk.frames.length, 8, '2 keys × 4 steps = 8 walk in-betweens');
+  for (const entry of walk.frames) {
+    assert.equal(entry.width, CANVAS);
+    assert.equal(entry.height, CANVAS);
+    assert.equal(existsSync(join(PACK_DIR.pathname, entry.file)), true,
+      `manifest cycle file missing: ${entry.file}`);
+  }
+});
+
 test('components/pets.ts requires the pack by exactly these filenames', () => {
   for (const name of PACK) {
     assert.match(
@@ -187,6 +210,11 @@ test('components/pets.ts requires the pack by exactly these filenames', () => {
       `pets.ts must require assets/mascots/smooth-duck/${name}.png by its literal filename`,
     );
   }
+  // The walk cycle's playback order is the pets.ts literal order (mascots#20):
+  // the component plays cycles.walk.frames in array order at the manifest fps.
+  const order = [...PETS_SOURCE.matchAll(/smooth-duck_walk_(\d{3})\.png/g)].map((m) => m[1]);
+  assert.deepEqual(order, ['000', '001', '002', '003', '004', '005', '006', '007'],
+    'pets.ts must list the walk cycle samples in manifest order');
 });
 
 test('the vendored smooth validator PASSES on the shipped pack (files, alpha, registration, determinism)', () => {

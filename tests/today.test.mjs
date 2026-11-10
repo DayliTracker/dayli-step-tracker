@@ -227,7 +227,7 @@ test('Today wires the textless hero: pet, count, footprints mark, and the a11y s
   // The saved per-date goal feeds every goal line (issue #17): each date row
   // reads its own day's goal, not the DEFAULT_GOAL constant.
   assert.match(appSource, /goalForDate\(goalHistory, dateKey\)/);
-  assert.match(todaySource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} progress=\{progress\}/);
+  assert.match(todaySource, /<PixelPet frames=\{pet\.frames\} particles=\{pet\.particles\} cycles=\{pet\.cycles\}\s+progress=\{progress\}/);
   assert.match(appSource, /Math\.min\(progressRatio\(loaded\.steps, goal\), 1\)/,
     'today progress is capped at 1 before it reaches the mood machine');
   assert.match(appSource, /accessibilityElementsHidden/,

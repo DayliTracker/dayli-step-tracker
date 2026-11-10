@@ -46,6 +46,63 @@
       "height": 512
     }
   ],
+  "cycles": {
+    "walk": {
+      "fps": 10,
+      "loop": true,
+      "frames": [
+        {
+          "name": "walk_000",
+          "file": "smooth-duck_walk_000.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_001",
+          "file": "smooth-duck_walk_001.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_002",
+          "file": "smooth-duck_walk_002.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_003",
+          "file": "smooth-duck_walk_003.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_004",
+          "file": "smooth-duck_walk_004.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_005",
+          "file": "smooth-duck_walk_005.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_006",
+          "file": "smooth-duck_walk_006.png",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "name": "walk_007",
+          "file": "smooth-duck_walk_007.png",
+          "width": 512,
+          "height": 512
+        }
+      ]
+    }
+  },
+  "version": 2,
   "sheet": {
     "file": "contact_sheet.png",
     "width": 1751,

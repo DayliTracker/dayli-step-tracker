@@ -687,7 +687,8 @@ function Today({ locale, goal, manual, health, healthPerm, pet, onOpenSettings, 
       >
         <ChatBubble locale={locale} dateKey={todayKey} event={bubbleEvent}
           dockBottom={PET_SIZE + PET_SLOT_HEADROOM + PET_SLOT_BUBBLE_LIFT} />
-        <PixelPet frames={pet.frames} particles={pet.particles} progress={progress} ref={petRef}
+        <PixelPet frames={pet.frames} particles={pet.particles} cycles={pet.cycles}
+          progress={progress} ref={petRef}
           size={PET_SIZE} accessibilityLabel={copy.petPoke} onEvent={say} onDuckTouch={onDuckTouch} />
       </View>
       {/* The count and the footprints mark, nothing else. The pill stays
