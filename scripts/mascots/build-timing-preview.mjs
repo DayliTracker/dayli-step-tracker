@@ -1,0 +1,226 @@
+// build-timing-preview — Gate 2 artifact (mascots#2): the animation-timing
+// preview for the shipped smooth duck, generated from the rendered pack.
+//
+//   node scripts/mascots/build-timing-preview.mjs
+//
+// Reads assets/mascots/smooth-duck/*.png, embeds them as data URLs, and
+// writes docs/mascots/duck/timing-preview.html — a self-contained page that
+// plays each mood at the EXACT timings the app's PixelPet runs
+// (components/PixelPet.tsx + src/moods.ts). Every timing below is copied
+// from those sources; a timing change lands in BOTH this generator and the
+// component, never one alone (skills/mascot Gate 2).
+//
+// The preview is the approval artifact for the app's motion: the delegated
+// timing ruling recorded on the mascots#2 PR cites this file.
+
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const packDir = join(root, 'assets/mascots/smooth-duck');
+const outFile = join(root, 'docs/mascots/duck/timing-preview.html');
+
+const frames = ['idle', 'blink', 'look', 'walk_a', 'walk_b', 'happy', 'surprised'];
+const dataUrls = Object.fromEntries(frames.map((frame) => {
+  const png = readFileSync(join(packDir, `smooth-duck_${frame}.png`));
+  return [frame, `data:image/png;base64,${png.toString('base64')}`];
+}));
+
+// Manifest v2 walk cycle (mascots#19/#20): the walk moods play the cycle's
+// rendered in-betweens at the manifest fps — fps and order read from the
+// shipped manifest, never re-declared here.
+const manifest = JSON.parse(readFileSync(join(packDir, 'manifest.json'), 'utf8'));
+const walkCycle = manifest.cycles.walk;
+const cycleDataUrls = walkCycle.frames.map((entry) => {
+  const png = readFileSync(join(packDir, entry.file));
+  return `data:image/png;base64,${png.toString('base64')}`;
+});
+const cycleStepMs = Math.round(1000 / walkCycle.fps);
+
+// Timings copied verbatim from components/PixelPet.tsx and src/moods.ts.
+const T = {
+  idleBobMs: 1100,        // bob −5px up, then down
+  idleBobPx: 5,
+  blinkFirstMs: 2600,     // + Math.random()*2200; holds 150ms
+  blinkHoldMs: 150,
+  lookFirstMs: 6000,      // + Math.random()*4000; holds 700ms
+  lookHoldMs: 700,
+  walkCycleFps: walkCycle.fps,   // manifest v2 walk cycle (smooth pack)
+  walkCycleStepMs: cycleStepMs,  // 1000 / fps per in-between frame
+  walkCycleFrames: cycleDataUrls.length,
+  walkSwapMs: 180,        // v1 packs only: walkA/walkB swap (the pixel duck)
+  walkBobUpMs: 200,
+  walkBobDownMs: 180,
+  walkTiltMs: 190,
+  walkBurstMs: 2600,      // WALK_MS
+  pokeMs: 550,            // POKE_MS — the surprised hold; heart rises 750ms
+  heartMs: 750,
+  celebrateHopMs: 260,    // up −18px, down 230ms, squash 90ms, release 220ms, settle 260ms
+  celebrateDownMs: 230,
+  celebrateSquashMs: 90,
+  celebrateReleaseMs: 220,
+  celebrateSettleMs: 260,
+  sleepBobMs: 1600,       // breathe −3px; blink frame held; dim 0.72; wake 12s
+  sleepBobPx: 3,
+  sleepDimMs: 450,
+  sleepWakeMs: 12000,
+  dizzyMs: 1200,          // tilt ±12° at 240ms per way, look frame held
+  dizzyTiltMs: 240,
+  hopMs: 700,             // HOP_MS: up 260ms, down 230ms, elastic settle 220ms
+  leadMs: 450,            // LEAD_MS dash, ease-in, walk frames
+  arriveMs: 600,          // ARRIVE_MS waddle, ease-out, walk frames
+  strollLegMs: 800,       // STROLL_LEG_MS per leg (out, back ×1.4, home)
+  strollHoldMs: 700,      // STROLL_HOLD_MS background long-hold that asks for it
+};
+
+const stateRows = Object.entries({
+  idle: `bob ${T.idleBobPx}px, ${T.idleBobMs}ms up / ${T.idleBobMs}ms down loop · blink after ${T.blinkFirstMs}–${T.blinkFirstMs + 2200}ms (${T.blinkHoldMs}ms hold) · look after ${T.lookFirstMs}–${T.lookFirstMs + 4000}ms (${T.lookHoldMs}ms hold) · breath scaleY 0.995–1.015 over ${2200}ms · sway ±0.6° over ${3400}ms · weight shift every 4–7s (idle only)`,
+  walk: `manifest v2 cycle: ${T.walkCycleFrames} tween in-betweens @ ${T.walkCycleFps} fps (${T.walkCycleStepMs}ms/frame) · bob −7px ${T.walkBobUpMs}/${T.walkBobDownMs}ms · tilt ±4° ${T.walkTiltMs}ms · burst ${T.walkBurstMs}ms`,
+  celebrate: `hop −18px ${T.celebrateHopMs}ms, land ${T.celebrateDownMs}ms · squash 1.12 ${T.celebrateSquashMs}ms, elastic release ${T.celebrateReleaseMs}ms · settle ${T.celebrateSettleMs}ms`,
+  poke: `surprised frame ${T.pokeMs}ms · heart rises ${T.heartMs}ms`,
+  sleep: `blink frame held · breathe −${T.sleepBobPx}px ${T.sleepBobMs}ms · dim 0.72 over ${T.sleepDimMs}ms · self-wake ${T.sleepWakeMs}ms`,
+  dizzy: `look frame held · tilt ±12° ${T.dizzyTiltMs}ms per way · plays ${T.dizzyMs}ms`,
+  hop: `up −18px ${T.celebrateHopMs}ms · land +3px ${T.celebrateDownMs}ms · elastic settle ${T.celebrateReleaseMs}ms · plays ${T.hopMs}ms`,
+  lead: `dash off the left edge, ${T.leadMs}ms ease-in, walk frames`,
+  arrive: `waddle back in, ${T.arriveMs}ms ease-out, walk frames`,
+  stroll: `background long-hold ${T.strollHoldMs}ms asks · legs ${T.strollLegMs}/${Math.round(T.strollLegMs * 1.4)}/${T.strollLegMs}ms ease-in-out, walk frames`,
+});
+
+const html = `<!doctype html>
+<!-- Generated by scripts/mascots/build-timing-preview.mjs — do not hand-edit;
+     regenerate. Gate 2 timing preview for mascots#2: the shipped smooth duck
+     playing every mood at the app's exact PixelPet timings. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smooth duck · Gate 2 timing preview (mascots#2)</title>
+<style>
+  body { margin: 0; font: 15px/1.5 -apple-system, system-ui, sans-serif; background: #FBF7EE; color: #40342B; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; } h1 small { font-weight: 400; color: #8a7d6d; }
+  #stage { width: 240px; height: 240px; margin: 8px auto; position: relative; }
+  #stage img { width: 240px; height: 240px; position: absolute; inset: 0; image-rendering: auto; }
+  #controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0; }
+  button { padding: 8px 14px; border: 1px solid #5B4634; border-radius: 10px; background: #fff; font: inherit; cursor: pointer; }
+  button.active { background: #B7E0CC; font-weight: 700; }
+  table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 13px; }
+  td, th { border: 1px solid #e2d6c2; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #F3E7CE; }
+  code { font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Smooth duck · Gate 2 timing preview <small>· mascots#2 · frames: the shipped pack @ mascots 0459293 (tween cycles + manifest v2)</small></h1>
+  <p>Every mood plays at the exact timings <code>components/PixelPet.tsx</code> and
+  <code>src/moods.ts</code> run. Click a state; idle returns on its own where the app
+  settles it back (walk ${T.walkBurstMs}ms, dizzy ${T.dizzyMs}ms, hop ${T.hopMs}ms).</p>
+  <div id="stage"><img id="frame" alt="smooth duck"></div>
+  <div id="controls"></div>
+  <table>
+    <tr><th>Mood</th><th>Timing (ms), verbatim from the component</th></tr>
+    ${stateRows.map(([mood, timing]) => `<tr><th>${mood}</th><td>${timing}</td></tr>`).join('\n    ')}
+  </table>
+  <p style="margin-top:16px"><strong>Approval record:</strong> this preview is the Gate 2
+  artifact the mascots#2 build cites — the timing approval is recorded on the PR as a
+  delegated ruling under the run's standing user directive, per the mascots#3 Gate 1
+  precedent, before any simulator run.</p>
+</main>
+<script>
+const FRAMES = ${JSON.stringify(dataUrls)};
+const CYCLE = ${JSON.stringify(cycleDataUrls)};
+const T = ${JSON.stringify(T)};
+const frameImg = document.getElementById('frame');
+const controls = document.getElementById('controls');
+let timers = [];
+function clearTimers() { timers.forEach(clearTimeout); timers.forEach(clearInterval); timers = []; }
+function show(name) { frameImg.src = FRAMES[name]; }
+function animate(el, keyframes, options) { el.animate(keyframes, options); }
+function play(name) {
+  clearTimers();
+  const stage = document.getElementById('stage');
+  stage.getAnimations().forEach((a) => a.cancel());
+  document.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.mood === name));
+  if (name === 'idle') {
+    show('idle');
+    animate(frameImg, [
+      { transform: 'translateY(0px)' }, { transform: 'translateY(-5px)' }, { transform: 'translateY(0px)' },
+    ], { duration: T.idleBobMs * 2, iterations: Infinity, easing: 'ease-in-out' });
+    const blink = () => { show('blink'); timers.push(setTimeout(() => { show('idle'); }, T.blinkHoldMs)); };
+    const look = () => { show('look'); timers.push(setTimeout(() => { show('idle'); }, T.lookHoldMs)); };
+    timers.push(setTimeout(function blinkLoop() { blink(); timers.push(setTimeout(blinkLoop, T.blinkFirstMs + Math.random() * 2200)); }, T.blinkFirstMs));
+    timers.push(setTimeout(function lookLoop() { look(); timers.push(setTimeout(lookLoop, T.lookFirstMs + Math.random() * 4000)); }, T.lookFirstMs));
+  } else if (name === 'walk' || name === 'lead' || name === 'arrive' || name === 'stroll') {
+    if (CYCLE.length > 0) {
+      // manifest v2 (smooth pack): the walk cycle at the manifest fps
+      let i = 0;
+      show(CYCLE[0]);
+      timers.push(setInterval(() => { i = (i + 1) % CYCLE.length; show(CYCLE[i]); }, T.walkCycleStepMs));
+    } else {
+      // v1 pack (the pixel duck): the two-frame swap
+      let walkA = true;
+      show('walk_a');
+      timers.push(setInterval(() => { walkA = !walkA; show(walkA ? 'walk_a' : 'walk_b'); }, T.walkSwapMs));
+    }
+    animate(frameImg, [
+      { transform: 'translateY(0px)' }, { transform: 'translateY(-7px)' }, { transform: 'translateY(0px)' },
+    ], { duration: T.walkBobUpMs + T.walkBobDownMs, iterations: Infinity, easing: 'ease-out' });
+    if (name === 'walk') timers.push(setTimeout(() => play('idle'), T.walkBurstMs));
+    if (name === 'stroll') {
+      const leg = T.strollLegMs;
+      animate(frameImg, [
+        { transform: 'translateX(0px)' }, { transform: 'translateX(120px)' },
+        { transform: 'translateX(-120px)' }, { transform: 'translateX(0px)' },
+      ], { duration: leg + leg * 1.4 + leg, easing: 'ease-in-out' });
+    }
+    if (name === 'lead') animate(frameImg, [{ transform: 'translateX(0px)' }, { transform: 'translateX(-160px)' }], { duration: T.leadMs, easing: 'ease-in', fill: 'forwards' });
+    if (name === 'arrive') animate(frameImg, [{ transform: 'translateX(-160px)' }, { transform: 'translateX(0px)' }], { duration: T.arriveMs, easing: 'cubic-bezier(0.215,0.61,0.355,1)' });
+  } else if (name === 'celebrate') {
+    show('happy');
+    animate(frameImg, [
+      { transform: 'translateY(0px) scale(1,1)' },
+      { transform: 'translateY(-18px) scale(1,1)', offset: 0.24 },
+      { transform: 'translateY(0px) scale(1,1)', offset: 0.47 },
+      { transform: 'translateY(3px) scale(1.12,0.9)', offset: 0.55 },
+      { transform: 'translateY(0px) scale(1,1)', offset: 0.75 },
+      { transform: 'translateY(0px) scale(1,1)' },
+    ], { duration: T.celebrateHopMs + T.celebrateDownMs + T.celebrateSquashMs + T.celebrateReleaseMs + T.celebrateSettleMs, iterations: Infinity, easing: 'ease-out' });
+  } else if (name === 'poke') {
+    show('surprised');
+    timers.push(setTimeout(() => play('idle'), T.pokeMs));
+  } else if (name === 'sleep') {
+    show('blink');
+    animate(frameImg, [
+      { transform: 'translateY(0px)', opacity: 0.72 }, { transform: 'translateY(-3px)', opacity: 0.72 }, { transform: 'translateY(0px)', opacity: 0.72 },
+    ], { duration: T.sleepBobMs * 2, iterations: Infinity, easing: 'ease-in-out' });
+  } else if (name === 'dizzy') {
+    show('look');
+    animate(frameImg, [
+      { transform: 'rotate(-12deg)' }, { transform: 'rotate(12deg)' }, { transform: 'rotate(-12deg)' },
+    ], { duration: T.dizzyTiltMs * 2, iterations: Infinity, easing: 'ease-in-out' });
+    timers.push(setTimeout(() => play('idle'), T.dizzyMs));
+  } else if (name === 'hop') {
+    show('happy');
+    animate(frameImg, [
+      { transform: 'translateY(0px)' }, { transform: 'translateY(-18px)', offset: 0.37 },
+      { transform: 'translateY(3px)', offset: 0.7 }, { transform: 'translateY(0px)' },
+    ], { duration: T.hopMs, easing: 'ease-out' });
+    timers.push(setTimeout(() => play('idle'), T.hopMs + 50));
+  }
+}
+for (const mood of ['idle', 'walk', 'celebrate', 'poke', 'sleep', 'dizzy', 'hop', 'lead', 'arrive', 'stroll']) {
+  const b = document.createElement('button');
+  b.textContent = mood; b.dataset.mood = mood;
+  b.addEventListener('click', () => play(mood));
+  controls.appendChild(b);
+}
+play('idle');
+</script>
+</body>
+</html>
+`;
+
+writeFileSync(outFile, html);
+console.log(`wrote ${outFile} (${html.length} bytes, ${frames.length} frames embedded)`);

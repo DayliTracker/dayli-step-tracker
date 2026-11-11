@@ -222,7 +222,7 @@ test('after clear-data the next launch reads the 8,000 default goal and device-d
   });
   assert.deepEqual(await clearLocalData(backend), { kind: 'ok', value: undefined });
   const prefs = await loadPreferences(backend);
-  assert.deepEqual(prefs, { kind: 'ok', value: { languageOverride: null } },
+  assert.deepEqual(prefs, { kind: 'ok', value: { languageOverride: null, petId: null } },
     'no override → the device decides the language');
   const goals = await loadGoalHistory(backend);
   assert.deepEqual(goals, { kind: 'ok', value: { goals: {} } });

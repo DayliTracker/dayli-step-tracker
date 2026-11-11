@@ -49,25 +49,39 @@ test('a device with no stored preferences reads the defaults', async () => {
   const backend = memoryBackend();
   const result = await loadPreferences(backend);
   assert.deepEqual(result, { kind: 'ok', value: DEFAULT_PREFERENCES });
-  assert.deepEqual(DEFAULT_PREFERENCES, { languageOverride: null });
+  assert.deepEqual(DEFAULT_PREFERENCES, { languageOverride: null, petId: null });
 });
 
 test('a saved override survives a restart (save, then read back)', async () => {
   const backend = memoryBackend();
-  const saved = await savePreferences(backend, { languageOverride: 'vi' });
-  assert.deepEqual(saved, { kind: 'ok', value: { languageOverride: 'vi' } });
+  const saved = await savePreferences(backend, { languageOverride: 'vi', petId: null });
+  assert.deepEqual(saved, { kind: 'ok', value: { languageOverride: 'vi', petId: null } });
   assert.equal(JSON.parse(backend.store.get(PREFERENCES_KEY)).languageOverride, 'vi');
   const reloaded = await loadPreferences(backend);
-  assert.deepEqual(reloaded, { kind: 'ok', value: { languageOverride: 'vi' } });
+  assert.deepEqual(reloaded, { kind: 'ok', value: { languageOverride: 'vi', petId: null } });
 });
 
 test('clearing the override stores null, so the next launch is device-derived', async () => {
   const backend = memoryBackend();
-  await savePreferences(backend, { languageOverride: 'vi' });
-  const cleared = await savePreferences(backend, { languageOverride: null });
-  assert.deepEqual(cleared, { kind: 'ok', value: { languageOverride: null } });
+  await savePreferences(backend, { languageOverride: 'vi', petId: null });
+  const cleared = await savePreferences(backend, { languageOverride: null, petId: null });
+  assert.deepEqual(cleared, { kind: 'ok', value: { languageOverride: null, petId: null } });
   const reloaded = await loadPreferences(backend);
-  assert.deepEqual(reloaded, { kind: 'ok', value: { languageOverride: null } });
+  assert.deepEqual(reloaded, { kind: 'ok', value: { languageOverride: null, petId: null } });
+});
+
+test('a saved mascot choice survives a restart, and a pre-petId document still parses (mascots#2)', async () => {
+  const backend = memoryBackend();
+  const saved = await savePreferences(backend, { languageOverride: 'en', petId: 'pixel-duck' });
+  assert.deepEqual(saved, { kind: 'ok', value: { languageOverride: 'en', petId: 'pixel-duck' } });
+  const reloaded = await loadPreferences(backend);
+  assert.deepEqual(reloaded, { kind: 'ok', value: { languageOverride: 'en', petId: 'pixel-duck' } });
+  // Upgrade path: a document written before the field existed (an existing
+  // install) parses with the default petId — the language override survives.
+  const legacy = await loadPreferences(memoryBackend({
+    [PREFERENCES_KEY]: '{"languageOverride":"vi"}',
+  }));
+  assert.deepEqual(legacy, { kind: 'ok', value: { languageOverride: 'vi', petId: null } });
 });
 
 test('a read failure is an error result, not success-shaped defaults', async () => {
@@ -87,6 +101,8 @@ test('malformed or unrecognized stored payloads are errors, never silent resets'
     'not json at all',
     '{"languageOverride":"fr"}',
     '{"languageOverride":123}',
+    '{"languageOverride":"en","petId":7}',
+    '{"languageOverride":"en","petId":["pixel-duck"]}',
     '{}',
     '["en"]',
     '',
@@ -101,9 +117,16 @@ test('the shell wires the preference lifecycle: resolve device, load, save, clea
   assert.match(appSource, /resolveDeviceLocale\(\s*getLocales\(\)/);
   assert.match(appSource, /loadPreferences\(AsyncStorage\)/);
   assert.match(appSource, /resolveInitialLocale\(prefs\.deviceLocale, prefs\.prefs\?\.languageOverride \?\? null\)/);
-  // The language page persists the override and can clear it back to device.
-  assert.match(appSource, /savePreferences\(AsyncStorage, \{ languageOverride: override \}\)/);
+  // The language page persists the override (and the mascot with it — one
+  // document, mascots#2) and can clear it back to device.
+  assert.match(appSource, /savePreferences\(AsyncStorage, \{ languageOverride: override, petId \}\)/);
   assert.match(appSource, /onPress=\{\(\) => onLanguage\(null\)\}/);
+  // The mascot switcher persists the same way: the whole document, the
+  // registry id under petId.
+  assert.match(appSource, /savePreferences\(AsyncStorage, \{ languageOverride, petId: id \}\)/);
+  assert.match(appSource,
+    /const petId = prefs\.kind === 'ready' \? prefs\.prefs\?\.petId \?\? null : null;/);
+  assert.match(appSource, /const pet = petForId\(petId\)/);
   // The first paint waits for preferences, so a relaunch never flashes en.
   assert.match(appSource, /if \(prefs\.kind !== 'ready'\) return null;/);
   // A storage failure is surfaced on the language page, not swallowed.

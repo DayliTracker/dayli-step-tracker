@@ -1,0 +1,9 @@
+# Vendored blobs vs DayliTracker/mascots@ca2f3a2 — cmp per file
+# mascots blob sha256: 9511d3cf006da096c06f8a75db22625ca32c9072f2faf845c74574b868f73150 (validate-frames.mjs)
+IDENTICAL scripts/mascots/engine.mjs
+IDENTICAL scripts/mascots/smooth-engine.mjs
+IDENTICAL scripts/mascots/validate-frames.mjs
+IDENTICAL scripts/mascots/validate-smooth-frames.mjs
+IDENTICAL scripts/mascots/packs/duck.mjs
+IDENTICAL scripts/mascots/packs/smooth-duck.mjs
+IDENTICAL scripts/mascots/palettes.json

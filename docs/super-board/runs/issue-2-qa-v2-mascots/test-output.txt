@@ -1,0 +1,28 @@
+=== CI=1 npm test ===
+  ---
+  duration_ms: 0.546584
+  type: 'test'
+  ...
+# Subtest: tokens pin the approved radius, spacing, and type scales exactly
+ok 157 - tokens pin the approved radius, spacing, and type scales exactly
+  ---
+  duration_ms: 0.118333
+  type: 'test'
+  ...
+# Subtest: the App style sheet keeps no literal hex colors, radii, or font families
+ok 158 - the App style sheet keeps no literal hex colors, radii, or font families
+  ---
+  duration_ms: 0.2345
+  type: 'test'
+  ...
+1..158
+# tests 158
+# suites 0
+# pass 158
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 800.152458
+test-pipeline-exit: 0
+npm test exit: 0
