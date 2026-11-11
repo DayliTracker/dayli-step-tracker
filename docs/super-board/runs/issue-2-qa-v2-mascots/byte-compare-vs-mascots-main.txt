@@ -1,0 +1,32 @@
+# byte-compare dayli PR#62 @ 4974ccb vs DayliTracker/mascots@origin/main (ca2f3a2)
+# method: mascots origin/main rendered fresh in a temp worktree (/tmp/mascots-main-qa2, resvg 2.6.2); cmp against shipped assets
+
+## Vendored sources vs mascots origin/main blobs
+IDENTICAL  scripts/mascots/packs/smooth-duck.mjs == mascots origin/main:skills/mascot/scripts/packs/smooth-duck.mjs
+IDENTICAL  scripts/mascots/smooth-engine.mjs == mascots origin/main:skills/mascot/scripts/smooth-engine.mjs
+IDENTICAL  scripts/mascots/validate-smooth-frames.mjs == mascots origin/main:skills/mascot/scripts/validate-smooth-frames.mjs
+IDENTICAL  scripts/mascots/palettes.json == mascots origin/main:skills/mascot/assets/palettes.json
+
+## Fresh mascots-main render vs shipped assets (byte-for-byte determinism)
+IDENTICAL  contact_sheet.png
+IDENTICAL  manifest.json
+IDENTICAL  smooth-duck_blink.png
+IDENTICAL  smooth-duck_happy.png
+IDENTICAL  smooth-duck_idle.png
+IDENTICAL  smooth-duck_look.png
+IDENTICAL  smooth-duck_surprised.png
+IDENTICAL  smooth-duck_walk_000.png
+IDENTICAL  smooth-duck_walk_001.png
+IDENTICAL  smooth-duck_walk_002.png
+IDENTICAL  smooth-duck_walk_003.png
+IDENTICAL  smooth-duck_walk_004.png
+IDENTICAL  smooth-duck_walk_005.png
+IDENTICAL  smooth-duck_walk_006.png
+IDENTICAL  smooth-duck_walk_007.png
+IDENTICAL  smooth-duck_walk_a.png
+IDENTICAL  smooth-duck_walk_b.png
+
+## Contact sheet vs mascots demo sheet (origin/main blob, not the stale local checkout)
+IDENTICAL  contact_sheet.png == mascots origin/main:docs/demo/smooth-duck-contact-sheet.png
+
+overall: ALL IDENTICAL

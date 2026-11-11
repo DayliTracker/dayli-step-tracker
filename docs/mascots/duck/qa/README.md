@@ -31,14 +31,24 @@ record. `tests/mascot-qa.test.mjs` pins the captured set.
 Captured: `state-idle`, `state-walk`, `state-celebrate`, `state-poke`,
 `state-sleep`, `state-hop`, `state-stroll`.
 
-> **Stale on the motion-lineage rebuild (2026-11-11, mascots@0459293):** the
-> committed `state-*.png` captures show the v1 (Gate-1) art. The rebuild
-> re-vendored the post-#15 replacement art + manifest v2; re-capture on the
-> new art is pending QA v2. The idb HID backend was unavailable during the
-> rebuild ("dtuhidd connection invalidated"; no GUI Simulator for input
-> injection), so moods could not be re-driven — recorded here rather than
-> faked. The rebuild's own app-run evidence (new art rendering in-app) is
-> under `docs/super-board/runs/issue-2-build-v2/`.
+**QA v2 re-capture (2026-11-11, mascots#2 round 2 @ `4974ccb`):**
+`state-idle`, `state-walk`, `state-celebrate`, `state-poke`, `state-sleep`,
+`state-hop` and `pixel-duck-home.png` are re-captured in-app on the new
+motion-lineage art (post-#15 pack + manifest v2 walk cycle + the perpetual
+motion layer), driven live on iPhone 18 Pro (iOS 27.0). `walk` plays the
+manifest v2 cycle (`"waddle with me?"` bubble, seeded 2,500 total);
+`celebrate` fires from a goal-reaching 8,000 total. Evidence and the
+per-state drive record: `docs/super-board/runs/issue-2-qa-v2-mascots/`.
+
+> **`state-stroll.png` is still the v1-art capture.** The stroll's 700 ms
+> background long-hold runs on the passive `onTouchStart` tracker
+> (`App.tsx`), which does not register the idb-synthesized touch stream —
+> three attempts this round (tap-hold at two background positions, then a
+> zero-distance swipe-hold) only woke the duck, and `idb ui swipe` itself
+> hangs. Duck-Pressable gestures (tap/long-press/double-tap) drive fine.
+> The v1-art file is kept rather than replaced or faked; re-drive stroll on
+> device or with a gesture backend that synthesizes continuous background
+> touches.
 
 **Not captured — dizzy.** The wiggle verdict needs a multi-reversal drag on
 the duck (`isWiggle`: ≥2 direction flips, whole excursion ≤140px,
