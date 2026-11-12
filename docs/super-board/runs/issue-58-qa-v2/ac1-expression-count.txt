@@ -1,0 +1,8 @@
+# AC1 evidence — issue-58 QA v2 · f485dd8
+# command: grep -Fn 'goalForDate(goalHistory, localDateKey(new Date()))' App.tsx
+254:  const currentGoal = goalHistory !== null ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL;
+# count: 1
+# inline copy remaining: 0
+# Today prop: 426:          goal={currentGoal}
+# goal page reads same value: 443:        currentGoal={currentGoal} canSaveGoal={goalHistory !== null}
+1020:          <GoalEditor locale={locale} currentGoal={currentGoal} canSave={canSaveGoal}
