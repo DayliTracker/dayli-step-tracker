@@ -121,6 +121,21 @@ test('interactive controls have accessible names and at least 48-point touch tar
   assert.match(headerAction[0], /minWidth:\s*44/, 'header actions are at least 44 points wide');
 });
 
+test('the stepper scrim spans the window: the popup mounts above the safe-area inset (issue #57)', () => {
+  // The popup's scrim used to mount as an in-screen absolute View under the
+  // root SafeAreaView, so it started at the safe-area top and left a hard
+  // cream strip across the status bar (issue #57: cream → dimmed at y=62pt).
+  // The prototype mounts its scrim with inset: 0 — the popup renders through
+  // a transparent root-level Modal, the same pattern as the explain sheet.
+  assert.match(appSource, /stepper !== null && \(\s*<Modal transparent animationType="none">/,
+    'the stepper popup mounts in a transparent root-level Modal, above the safe-area inset');
+  assert.match(appSource, /<View style=\{s\.overlay\} accessibilityViewIsModal>/,
+    'the scrim and VoiceOver containment are exactly as before');
+  // The scrim token and the 300pt card are untouched — only the mount moved.
+  assert.match(appSource, /backgroundColor: colors\.overlayDim/);
+  assert.match(appSource, /editorCard: \{ width: 300,/);
+});
+
 test('the date rows open the in-screen stepper; the manual editor navigation is gone', () => {
   // Each date row is its own control opening the stepper for that exact date.
   assert.match(appSource, /onPress=\{\(\) => onOpenStepper\(dateKey\)\}/);

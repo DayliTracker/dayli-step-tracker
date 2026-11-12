@@ -933,55 +933,62 @@ function SettingsPage({ locale, onNavigate, onClear, clearError, goalSubtitle, g
           health={healthTotals} healthPerm={healthPerm} onOpenStepper={openStepper} />
         <Text style={s.disclosure}>{copy.dataDisclosure}</Text>
       </ScrollView>
-      {/* The stepper popup (prototype v3): an in-screen overlay, not a
-          screen — navigation never leaves Settings. accessibilityViewIsModal
-          keeps VoiceOver inside the popup while it is open. */}
+      {/* The stepper popup (prototype v3): in-screen state, not a screen —
+          navigation never leaves Settings. It renders through a transparent
+          root-level Modal (issue #57): a scrim mounted as a plain in-screen
+          View sat under the root SafeAreaView, so it stopped at the safe-area
+          top and left a hard cream strip across the status bar. The Modal's
+          window spans the whole screen, so the scrim reaches y=0 exactly like
+          the prototype's inset: 0 overlay. accessibilityViewIsModal keeps
+          VoiceOver inside the popup while it is open. */}
       {stepper !== null && (
-        <View style={s.overlay} accessibilityViewIsModal>
-          <View style={s.editorCard}>
-            <Text accessibilityRole="header" style={s.alertTitle}>{stepperLabel}</Text>
-            <View style={s.stepperRow}>
-              <Pressable accessibilityRole="button"
-                accessibilityLabel={copy.stepperDecrease}
-                onPress={() => stepDelta(-STEP)}
-                style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
-                <Text style={s.stepButtonText}>−</Text>
-              </Pressable>
-              {/* The readout's label carries the number — a label of copy
-                  alone would hide the value from VoiceOver. */}
-              <Text style={s.editorValue}
-                accessibilityLabel={`${copy.manualInputLabel}: ${formatNumber(stepper.value, locale)}`}>
-                {formatNumber(stepper.value, locale)}
-              </Text>
-              <Pressable accessibilityRole="button"
-                accessibilityLabel={copy.stepperIncrease}
-                onPress={() => stepDelta(STEP)}
-                style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
-                <Text style={s.stepButtonText}>+</Text>
-              </Pressable>
-            </View>
-            {/* Prototype .alert-actions: borderless text buttons spread with
-                space-around — the accentText green IS Save's confirm weight,
-                and Remove takes the destructive color: it ends the date's
-                manual precedence and only exists when a manual total does. */}
-            <View style={s.stepperActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
-                onPress={() => setStepper(null)} style={s.stepperAction}>
-                <Text style={s.stepperActionText}>{copy.cancel}</Text>
-              </Pressable>
-              {stepper.hasManual && (
-                <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
-                  onPress={removeStepper} style={s.stepperAction}>
-                  <Text style={s.stepperRemoveText}>{copy.manualRemove}</Text>
+        <Modal transparent animationType="none">
+          <View style={s.overlay} accessibilityViewIsModal>
+            <View style={s.editorCard}>
+              <Text accessibilityRole="header" style={s.alertTitle}>{stepperLabel}</Text>
+              <View style={s.stepperRow}>
+                <Pressable accessibilityRole="button"
+                  accessibilityLabel={copy.stepperDecrease}
+                  onPress={() => stepDelta(-STEP)}
+                  style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
+                  <Text style={s.stepButtonText}>−</Text>
                 </Pressable>
-              )}
-              <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
-                onPress={saveStepper} style={s.stepperAction}>
-                <Text style={s.stepperActionText}>{copy.manualSave}</Text>
-              </Pressable>
+                {/* The readout's label carries the number — a label of copy
+                    alone would hide the value from VoiceOver. */}
+                <Text style={s.editorValue}
+                  accessibilityLabel={`${copy.manualInputLabel}: ${formatNumber(stepper.value, locale)}`}>
+                  {formatNumber(stepper.value, locale)}
+                </Text>
+                <Pressable accessibilityRole="button"
+                  accessibilityLabel={copy.stepperIncrease}
+                  onPress={() => stepDelta(STEP)}
+                  style={({ pressed }) => [s.stepButton, pressed && s.pressedStrong]}>
+                  <Text style={s.stepButtonText}>+</Text>
+                </Pressable>
+              </View>
+              {/* Prototype .alert-actions: borderless text buttons spread with
+                  space-around — the accentText green IS Save's confirm weight,
+                  and Remove takes the destructive color: it ends the date's
+                  manual precedence and only exists when a manual total does. */}
+              <View style={s.stepperActions}>
+                <Pressable accessibilityRole="button" accessibilityLabel={copy.cancel}
+                  onPress={() => setStepper(null)} style={s.stepperAction}>
+                  <Text style={s.stepperActionText}>{copy.cancel}</Text>
+                </Pressable>
+                {stepper.hasManual && (
+                  <Pressable accessibilityRole="button" accessibilityLabel={copy.manualRemove}
+                    onPress={removeStepper} style={s.stepperAction}>
+                    <Text style={s.stepperRemoveText}>{copy.manualRemove}</Text>
+                  </Pressable>
+                )}
+                <Pressable accessibilityRole="button" accessibilityLabel={copy.manualSave}
+                  onPress={saveStepper} style={s.stepperAction}>
+                  <Text style={s.stepperActionText}>{copy.manualSave}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </Modal>
       )}
     </View>
   );
