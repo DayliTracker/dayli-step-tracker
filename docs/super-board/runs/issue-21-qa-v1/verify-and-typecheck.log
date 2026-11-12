@@ -1,0 +1,8 @@
+# QA rerun — 2026-11-12T00:46:41Z at fcffe88890f7bdeb00b8873c967da27b3cb10c90
+
+## npm ci --silent && npm run typecheck
+npm ci exit: 0
+> dayli-step-tracker@1.0.0 typecheck
+> tsc --noEmit
+
+typecheck exit: 0

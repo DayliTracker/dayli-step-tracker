@@ -1,0 +1,5 @@
+npm ci --silent  5.50s user 10.44s system 215% cpu 7.387 total
+
+> dayli-step-tracker@1.0.0 typecheck
+> tsc --noEmit
+
