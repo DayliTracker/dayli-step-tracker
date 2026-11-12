@@ -423,7 +423,7 @@ export default function App() {
         }>
         <Today locale={locale} manual={manual} health={healthTotals} healthPerm={healthPerm}
           pet={pet}
-          goal={goalHistory ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL}
+          goal={currentGoal}
           onOpenSettings={openSettingsFromHome} petRef={petRef} />
       </ScrollView>
     );
