@@ -7,7 +7,8 @@ import { useFonts } from 'expo-font';
 import { getLocales } from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Alert, Animated, AppState, Easing, GestureResponderEvent, Image, Linking, Modal, PanResponder,
+  AccessibilityInfo, Alert, Animated, AppState, Easing, GestureResponderEvent, Image, Linking,
+  Modal, PanResponder,
   Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
@@ -469,24 +470,58 @@ export default function App() {
  * The screen slide (prototype v5 slideInRight/slideInLeft): the new screen
  * drifts in from the direction the duck led — 70px, 300ms ease-out, with a
  * fade. Remounts per screen (keyed in App), so each navigation plays once.
+ *
+ * Reduce Motion (OS setting, issue #55): the entrance waits for the OS answer
+ * (the ChatBubble read + `reduceMotionChanged` pattern) so a reduced-motion
+ * screen never slides first and snaps later — with the setting on, the offset
+ * holds at 0 and only the 300ms opacity fade plays; with it off, the
+ * prototype slide plays unchanged. The screen sits at opacity 0 until the
+ * answer lands, so that wait paints nothing.
  */
 function ScreenEnter({ dir, children }: {
   dir: 'forward' | 'back' | null; children: ReactElement;
 }) {
-  const offset = useRef(
-    new Animated.Value(dir === 'forward' ? SLIDE_OFFSET : dir === 'back' ? -SLIDE_OFFSET : 0),
-  ).current;
+  const offset = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(dir === null ? 1 : 0)).current;
+  // null until the OS answer lands: the entrance holds until it is known.
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   useEffect(() => {
-    if (dir === null) return;
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduceMotion(on); })
+      .catch(() => { if (alive) setReduceMotion(false); });
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (on) => setReduceMotion(on),
+    );
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
+  const played = useRef(false);
+  useEffect(() => {
+    // Instant destinations (dir null) never animate, and the entrance plays
+    // once per mount, only after the OS answer is known — a later flip of the
+    // setting must never replay a settled entrance.
+    if (dir === null || reduceMotion === null || played.current) return;
+    played.current = true;
+    if (!reduceMotion) offset.setValue(dir === 'forward' ? SLIDE_OFFSET : -SLIDE_OFFSET);
     Animated.parallel([
-      Animated.timing(offset, {
-        toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      ...(reduceMotion ? [] : [
+        Animated.timing(offset, {
+          toValue: 0, duration: SLIDE_MS, easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
       Animated.timing(opacity, { toValue: 1, duration: SLIDE_MS, useNativeDriver: true }),
     ]).start();
-  }, [dir, offset, opacity]);
+  }, [dir, offset, opacity, reduceMotion]);
+  // A Reduce Motion flip after the entrance (settled, or mid-fade) snaps the
+  // offset home: the screen stops moving, whatever fade it has completes.
+  useEffect(() => {
+    if (reduceMotion === true) offset.setValue(0);
+  }, [reduceMotion, offset]);
   return (
     <Animated.View style={[s.screen, { transform: [{ translateX: offset }], opacity }]}>
       {children}
