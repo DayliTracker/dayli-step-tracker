@@ -1300,10 +1300,11 @@ const s = StyleSheet.create({
   },
   count: { color: colors.text, fontSize: typeSize.display, fontFamily: typeFace.text.heavy,
     fontVariant: typeVariant.tabularNums },
-  // The glyph's em-box carries descender space, so inside the pill's baseline
-  // row its visual bottom rides high; the optical nudge drops it onto the
-  // digits' baseline the way the prototype's 👣 sits (spacing.xs = 3).
-  footprint: { transform: [{ translateY: spacing.xs }] },
+  // No nudge: inside the pill's baseline row the shoe-print's ink already
+  // rests ~0.7pt below the digits' ink at translateY 0 — the prototype's own
+  // placement (prototype/textless-shell v6: mark bottom ~1px below the
+  // digits). spacing.xs stays reserved for title/subtitle nudges.
+  footprint: {},
   // Count + footprints mark on the textless home: one baseline row like the
   // prototype's steps-pill (row direction, gap 10, padding 8 vertical /
   // 14 horizontal). The prototype centers the shrink-to-fit pill under the
