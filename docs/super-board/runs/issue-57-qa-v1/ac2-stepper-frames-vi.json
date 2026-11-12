@@ -1,0 +1,64 @@
+{
+  "elements" : [
+    {
+      "frame" : {
+        "h" : 22,
+        "w" : 67.666671752929688,
+        "x" : 167,
+        "y" : 364
+      },
+      "key" : "cardTitle",
+      "present" : true
+    },
+    {
+      "frame" : {
+        "h" : 37.666656494140625,
+        "w" : 110,
+        "x" : 146,
+        "y" : 407
+      },
+      "key" : "readout",
+      "present" : true
+    },
+    {
+      "frame" : {
+        "h" : 52,
+        "w" : 52,
+        "x" : 76,
+        "y" : 400
+      },
+      "key" : "decrease",
+      "present" : true
+    },
+    {
+      "frame" : {
+        "h" : 52,
+        "w" : 52,
+        "x" : 274,
+        "y" : 400
+      },
+      "key" : "increase",
+      "present" : true
+    },
+    {
+      "frame" : {
+        "h" : 48,
+        "w" : 88.333343505859375,
+        "x" : 214,
+        "y" : 462
+      },
+      "key" : "save",
+      "present" : true
+    },
+    {
+      "frame" : {
+        "h" : 48,
+        "w" : 53.000007629394531,
+        "x" : 99.666666030883789,
+        "y" : 462
+      },
+      "key" : "cancel",
+      "present" : true
+    }
+  ]
+}

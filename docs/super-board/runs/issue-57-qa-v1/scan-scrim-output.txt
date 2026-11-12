@@ -1,0 +1,22 @@
+== /tmp/qa57/before-stepper-300-vi.png  1206x2622
+   cream run at top: 186px = 62.0pt  <-- hard cream edge at the safe-area top
+   row y=184px ( 61.3pt)  cream=1.00 dim=0.00
+   row y=185px ( 61.7pt)  cream=1.00 dim=0.00
+   row y=186px ( 62.0pt)  cream=0.00 dim=1.00
+   row y=187px ( 62.3pt)  cream=0.00 dim=1.00
+   row y=188px ( 62.7pt)  cream=0.00 dim=1.00
+   card bbox: x[153..1053] y[1072..1634] px  = x[51.0..351.0] y[357.3..544.7] pt  area=440163 comps_offtop=1
+== /tmp/qa57/ac1-stepper-open-vi.png  1206x2622
+   cream run at top: 0px = 0.0pt  (no cream strip; scrim reaches y=0)
+   row y=0px (  0.0pt)  cream=0.00 dim=1.00
+   row y=1px (  0.3pt)  cream=0.00 dim=1.00
+   row y=2px (  0.7pt)  cream=0.00 dim=1.00
+   card bbox: x[153..1053] y[1032..1590] px  = x[51.0..351.0] y[344.0..530.0] pt  area=443719 comps_offtop=1
+== /tmp/qa57/ac1-stepper-open-en.png  1206x2622
+   cream run at top: 0px = 0.0pt  (no cream strip; scrim reaches y=0)
+   row y=0px (  0.0pt)  cream=0.00 dim=1.00
+   row y=1px (  0.3pt)  cream=0.00 dim=1.00
+   row y=2px (  0.7pt)  cream=0.00 dim=1.00
+   card bbox: x[153..1053] y[1032..1590] px  = x[51.0..351.0] y[344.0..530.0] pt  area=443255 comps_offtop=1
+card-position delta (before vs after), px: [0, 40, 0, 44] -> pt: [0.0, 13.3, 0.0, 14.7]
+POSITION CHANGED
