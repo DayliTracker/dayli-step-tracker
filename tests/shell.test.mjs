@@ -172,6 +172,37 @@ test('the stepper removes a manual total through the store when one exists', () 
   assert.equal(getCopy('vi').manualRemove, 'Xóa tổng');
 });
 
+test('the ScreenEnter entrance stays behind the Reduce Motion answer (issue #66)', () => {
+  // PR #65 (issue #55) gates the prototype slide on the OS Reduce Motion
+  // answer. Pin all three gate shapes by source so an edit that makes the
+  // 70px slide unconditional again fails here, instead of only showing up in
+  // manual on-device QA (the one un-pinned contract in #55's QA v1 ledger).
+  const screenEnter = appSource.slice(
+    appSource.indexOf('function ScreenEnter'),
+    appSource.indexOf('function Header'),
+  );
+  assert.ok(screenEnter.includes('function ScreenEnter'), 'the ScreenEnter source is found');
+  // 1. The entrance waits for the OS answer: isReduceMotionEnabled() runs
+  //    before any animation is built.
+  assert.match(screenEnter, /AccessibilityInfo\.isReduceMotionEnabled\(\)/,
+    'ScreenEnter reads the Reduce Motion setting before animating');
+  // 2. A mid-session flip is tracked by the reduceMotionChanged listener, and
+  //    that listener is removed on unmount.
+  assert.match(screenEnter, /addEventListener\(\s*'reduceMotionChanged'/,
+    'ScreenEnter subscribes to reduceMotionChanged');
+  assert.match(screenEnter, /subscription\.remove\(\)/,
+    'the reduceMotionChanged listener is cleaned up on unmount');
+  // 3. The slide itself is conditional: with Reduce Motion on, the offset
+  //    timing contributes nothing to the parallel entrance (only the fade).
+  assert.match(screenEnter,
+    /\.\.\.\(reduceMotion \? \[\] : \[\s*Animated\.timing\(offset,/,
+    'the offset slide plays only when Reduce Motion is off');
+  // And the gate cannot degrade to an unconditional slide: a bare offset
+  // timing first in the parallel list means the conditional is gone.
+  assert.doesNotMatch(screenEnter, /Animated\.parallel\(\[\s*Animated\.timing\(offset,/,
+    'the entrance never slides unconditionally');
+});
+
 test('the mini duck sits in the Settings header and returns home through the back action', () => {
   const settings = appSource.slice(appSource.indexOf('function SettingsPage'),
     appSource.indexOf('function DestinationPage'));
