@@ -656,6 +656,11 @@ function Today({ locale, goal, manual, health, healthPerm, pet, onOpenSettings, 
     // to Settings for screen readers (the swipe is the sighted extra).
     <View
       accessible
+      // The group stretches over the hero band (issue #52): the shrink-wrapped
+      // group ended at the pill, so holds on the side strips never reached the
+      // touch observer. Stretch + grow keep the children exactly where they
+      // were — the duck and pill carry their own centering.
+      style={{ alignSelf: 'stretch', flexGrow: 1 }}
       accessibilityLabel={todayA11yLabel(snapshot, goal, locale, copy)}
       accessibilityActions={[{ name: 'openSettings', label: copy.openSettings }]}
       onAccessibilityAction={(event) => {
@@ -666,9 +671,13 @@ function Today({ locale, goal, manual, health, healthPerm, pet, onOpenSettings, 
       {/* Passive touch observer (issue #43): raw touch events only — no
           responder is claimed, so the pan swipe and the ScrollView keep their
           behavior untouched. It wakes a sleeper on any touch and times the
-          stroll's background long-hold. An unstyled wrapper keeps the layout
-          identical to the group's own children. */}
+          stroll's background long-hold. The wrapper fills the stretched group
+          (issue #52): the observer covers the whole home surface, so holds
+          below the pill and on the side strips stroll too. The fill is
+          invisible — no background, and the slot and pill keep their own
+          centering. */}
       <View
+        style={{ flex: 1 }}
         onTouchStart={onBackgroundTouchStart}
         onTouchMove={onBackgroundTouchMove}
         onTouchEnd={onBackgroundTouchEnd}
@@ -1238,8 +1247,12 @@ const s = StyleSheet.create({
   pressedStrong: { opacity: 0.95 },
   pressedGentle: { opacity: 0.97 },
   // The textless home: content anchored near the top so the duck sits high
-  // (the prototype's 9vh top anchor on a full-height phone).
-  hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen },
+  // (the prototype's 9vh top anchor on a full-height phone). Growing to the
+  // viewport (issue #52) lets Today's stretched group cover the whole home
+  // surface — the stroll long-hold answers below the pill too. Grow never
+  // shrinks: content taller than the screen still scrolls as before.
+  hero: { alignItems: 'center', paddingTop: spacing.screen * 3, paddingBottom: spacing.screen,
+    flexGrow: 1 },
   card: { alignItems: 'center', padding: spacing.page, borderRadius: radius.card,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   // The prototype zeroes the slot's top margin on the textless home

@@ -64,6 +64,17 @@ test('AC3: holding home ~0.7s strolls the duck across with walk frames', () => {
   // pointerEvents="none" and can never start one).
   assert.match(appSource, /if \(duckTouchRef\.current \|\| pillTouchRef\.current\) return;/);
   assert.match(appSource, /onTouchStart=\{onPillTouchStart\}/, 'the pill opts out');
+  // The observer covers the whole home surface (issue #52): the wrapper fills
+  // the stretched group and the hero grows to the viewport, so a hold below
+  // the pill or on a side strip lands on the observer too — not only the
+  // pet-slot + pill band.
+  assert.match(appSource,
+    /style=\{\{ flex: 1 \}\}\s*\n\s*onTouchStart=\{onBackgroundTouchStart\}/,
+    'the observer wrapper fills the home surface');
+  assert.match(appSource, /alignSelf: 'stretch', flexGrow: 1/,
+    'the accessible group covers the hero band');
+  assert.match(appSource, /hero: \{[^}]*flexGrow: 1/,
+    'the hero grows to the viewport');
   // The stroll walks: the walk-frame swap and the waddle motion include it.
   assert.match(petSource,
     /mood === 'walk' \|\| mood === 'lead' \|\| mood === 'arrive' \|\| mood === 'stroll'/);
