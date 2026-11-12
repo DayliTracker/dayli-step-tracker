@@ -1,0 +1,12 @@
+# AC1 — expression appears exactly once (grep, run 2026-11-13 03:34 +0700)
+$ grep -n "goalForDate(goalHistory, localDateKey(new Date()))" App.tsx
+254:  const currentGoal = goalHistory !== null ? goalForDate(goalHistory, localDateKey(new Date())) : DEFAULT_GOAL;
+count: 1
+
+$ grep -n "goal={currentGoal}\|currentGoal={currentGoal}" App.tsx
+426:          goal={currentGoal}
+443:        currentGoal={currentGoal} canSaveGoal={goalHistory !== null}
+1020:          <GoalEditor locale={locale} currentGoal={currentGoal} canSave={canSaveGoal}
+
+$ grep -n "goal={goalHistory" App.tsx   # leftover inline copies — expect none
+none found (exit 1)
