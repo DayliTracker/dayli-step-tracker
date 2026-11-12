@@ -1,0 +1,11 @@
+# branch vs merged main — PR #70 (issue #66)
+## merge-base issue-66-pin-screenenter-reduce-motion-gate origin/main
+b61a0f06d3580eb4dbdaa408153fdd35efc39a71
+## origin/main tip
+b61a0f06d3580eb4dbdaa408153fdd35efc39a71
+## git diff 69889ef origin/main -- App.tsx (empty = identical)
+## git diff 69889ef origin/main --stat -- App.tsx tests/
+ tests/shell.test.mjs | 31 -------------------------------
+ 1 file changed, 31 deletions(-)
+## git status at QA close
+(clean)
